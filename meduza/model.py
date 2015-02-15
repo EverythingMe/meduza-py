@@ -4,13 +4,24 @@ __author__ = 'dvirsky'
 import queries
 import logging
 import datetime
+import bson
 
 class Column(object):
 
-    def __init__(self, name):
+    def __init__(self, name, default = None):
 
         self.name = name
         self.primary = False
+        self._default = default
+
+
+    def default(self):
+
+        if callable(self._default):
+            return self.default()
+
+        return self._default
+
 
 
     def toFilter(self, condition, values):
@@ -44,11 +55,14 @@ class Key(Column):
 
     def decode(self, data):
 
+        print data, type(data)
         if data == NIL or data is None:
             return None
 
-        if isinstance(data, unicode):
+        elif isinstance(data, unicode):
             return data.encode('utf-8')
+        elif isinstance(data, bson.Binary):
+            return str(data)
 
         return '%s' % data
 
@@ -59,6 +73,8 @@ class Key(Column):
 
         if isinstance(data, unicode):
             return data.encode('utf-8')
+        elif isinstance(data, bson.Binary):
+            return str(data)
 
         return '%s' % data
 
@@ -139,7 +155,14 @@ class Timestamp(Column):
         raise ValueError("Invalid value for datetime: %s"%data)
 
     def encode(self, data):
+        if data is None:
+            d = self.default()
+            if d is not None:
+                return d
+
         return self.decode(data)
+
+
 
 class Bool(Column):
 
@@ -224,14 +247,11 @@ def Model(table):
             cols = cls.columns()
 
             obj = object.__new__(cls)
-
             obj.setPrimary(entity.Id)
-            setattr(obj, cls._primary, entity.Id)
-
 
             for k,v in entity.Properties.iteritems():
 
-                if  k == cls._primary:
+                if  k == cls.primary():
                     continue
 
                 col = cols.get(k)

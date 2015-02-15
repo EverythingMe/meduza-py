@@ -6,7 +6,7 @@ __author__ = 'dvirsky'
 
 from queries import *
 from client import *
-from model import Model, Key, Text
+from model import Model, Key, Text, Timestamp
 
 
 __client = None
@@ -71,9 +71,10 @@ def put(*objects):
 
 class User(Model("Users")):
 
-    id = Key("id", )
+    id = Key("id")
     name = Text("name")
     email = Text("email")
+    registrationTime = Timestamp("registrationTime", default=lambda:time.time())
 
 
 
@@ -90,7 +91,11 @@ if __name__ == '__main__':
 
     ids = put(u)
     print ids
-    # print get(User, u.id)
+    print get(User, u.id)
+
+    print select(User, User.name == "dvir")
+
+
 
 
 
