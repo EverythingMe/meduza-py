@@ -18,7 +18,7 @@ class Column(object):
     def default(self):
 
         if callable(self._default):
-            return self.default()
+            return self._default()
 
         return self._default
 
@@ -142,6 +142,12 @@ class Binary(Column):
 
 class Timestamp(Column):
 
+    @classmethod
+    def now(cls):
+
+        return datetime.datetime.utcnow()
+
+    
     def decode(self, data):
         if data == None:
             return None
@@ -158,7 +164,7 @@ class Timestamp(Column):
         if data is None:
             d = self.default()
             if d is not None:
-                return d
+                return self.encode(d)
 
         return self.decode(data)
 
@@ -280,8 +286,8 @@ def Model(table):
 
                 if k == primary:
                     continue
-                ent.Properties[k] = col.encode(getattr(self, k))
-
+                ent.Properties[k] = col.encode(self.__dict__.get(k))
+                print k, ent.Properties[k]
             return ent
 
 

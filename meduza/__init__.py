@@ -74,7 +74,7 @@ class User(Model("Users")):
     id = Key("id")
     name = Text("name")
     email = Text("email")
-    registrationTime = Timestamp("registrationTime", default=lambda:time.time())
+    registrationTime = Timestamp("registrationTime", default=Timestamp.now)
 
 
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     print ids
     print get(User, u.id)
 
-    print select(User, User.name == "dvir")
+    # print select(User, User.name == "dvir")
 
 
 
