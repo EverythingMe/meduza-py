@@ -9,6 +9,7 @@ without knowing what you're doing and modifying the server code accordingly.
 
 ** * * /WARNING * * **
 """
+from UserDict import DictMixin, UserDict
 
 
 class Condition(object):
@@ -20,7 +21,6 @@ class Condition(object):
     EQ = "="
     GT = ">"
     LT = "<"
-
 
 
 
@@ -45,10 +45,12 @@ class Response(object):
     """
     The base class for all responses. Includes the query processing time on the server, and the error returned from it
     """
-    def __init__(self, Error = None, Time = 0):
+    def __init__(self, **kwargs):
 
-        self.error = Error
-        self.time = Time
+        self.error = kwargs.get('Error', None)
+        self.time = kwargs.get('Time', )
+
+
 
 
 
@@ -59,11 +61,11 @@ class Filter(object):
 
     def __init__(self, property, op, *values):
         self.Property = property
-        self.Op = op
+        self.Operator = op
         self.Values = values
 
     def __repr__(self):
-        return "Filter{%s %s %s}" % (self.Property, self.Op, self.Values)
+        return "Filter{%s %s %s}" % (self.Property, self.Operator, self.Values)
 
 class Ordering(object):
     """
@@ -84,6 +86,15 @@ class Paging(object):
         self.Limit = limit
 
 
+
+def Filters(*filters):
+
+    ret = {}
+    for flt in filters:
+        ret[flt.Property] = flt
+
+    return ret
+
 class GetQuery(object):
     """
     GetQuery encodes the parameters to get objects from the server
@@ -92,7 +103,7 @@ class GetQuery(object):
 
         self.Table = table
         self.Properties = list(properties)
-        self.Filters = list(filters)
+        self.Filters = Filters(*filters)
         self.Order = order
         self.Paging =paging or Paging()
 
@@ -105,7 +116,7 @@ class GetQuery(object):
         :return: the query object itself for builder-style syntax
         """
 
-        self.Filters.append(Filter(prop, condition, *values))
+        self.Filters[prop] = Filter(prop, condition, *values)
 
         return self
 
@@ -138,7 +149,7 @@ class GetResponse(Response):
     """
     def __init__(self, **kwargs):
 
-        Response.__init__(self, kwargs.get('Error'), kwargs.get('Time'))
+        Response.__init__(self, **kwargs)
 
         self.entities = [Entity(e['Id'], **e['Properties']) for e in kwargs.get('Entities', [])]
         self.total = kwargs.get('Total', 0)
@@ -189,13 +200,13 @@ class PutResponse(Response):
     """
     def __init__(self, **kwargs):
 
-        Response.__init__(self, kwargs.get('Error'), kwargs.get('Time'))
+        Response.__init__(self, **kwargs)
         self.ids = map(str, kwargs.get('Ids', []))
 
 
     def __repr__(self):
 
-        return 'Entity<%s>: %s' % (self.Id, self.Properties)
+        return 'PutResponse%s' % self.__dict__
 
 
 class DelQuery(object):
@@ -205,15 +216,92 @@ class DelQuery(object):
     def __init__(self, table, *filters):
 
         self.Table = table
-        self.Filters = list(filters)
+        self.Filters = Filters(*filters)
 
     def filter(self, prop, op, *values):
 
-        self.Filters.append(Filter(prop, op, *values))
+        self.Filters[prop] = Filter(prop, op, *values)
         return self
 
 
-class DelResponse(object):
-    pass
+class DelResponse(Response):
+
+    def __init__(self, **kwargs):
+
+        Response.__init__(self, **kwargs.get('Response', {}))
+        self.num = kwargs.get('Num', 0)
+
+
+class Change(object):
+
+    Set        = "SET"
+    Del        = "DEL"
+    Increment  = "INCR"
+    SetAdd     = "SADD"
+    SetDel     = "SDEL"
+    MapSet     = "MSET"
+    MapDel     = "MDEL"
+
+
+    def __init__(self, property, op, value):
+        if op != self.Set:
+            raise ValueError("op %s not supported", op)
+
+        self.Property = property
+        self.Op = op
+        self.Value = value
+
+    @classmethod
+    def set(cls, prop, val):
+        """
+        Create a SET change
+        """
+
+        return Change(prop, cls.Set, val)
+
+
+class UpdateQuery(object):
+    """
+    DelQuery sets filters telling the server what objects to delete. It returns the number of objects deleted
+    """
+    def __init__(self, table, *filters, **values):
+
+        self.Table = table
+        self.Filters = Filters(*filters)
+        self.Changes = []
+        for k,v in values.iteritems():
+           self.set(k, v)
+
+    def filter(self, prop, operator, *values):
+        """
+        Add an extra selection filter for what objects to update
+        :param prop: the name of the filtered property
+        :param operator: the filter operator (equals, gt, in, etc)
+        :param values: the values for selection (e.g. "id" "in" 1,2,34)
+        :return: the update query itself
+        """
+
+        self.Filters[prop] = Filter(prop, operator, *values)
+        return self
+
+    def set(self, prop, val):
+        """
+        Add another SET change of a property to the query
+        :param prop: the name of the changed property
+        :param val: the changed value
+        :return: the update query object itself
+        """
+        self.Changes.append(Change.set(prop, val))
+        return self
+
+class UpdateResponse(Response):
+
+    def __init__(self, **kwargs):
+
+        Response.__init__(self, **kwargs.get('Response', {}))
+        self.num = kwargs.get('Num', 0)
+
+
+
 
 

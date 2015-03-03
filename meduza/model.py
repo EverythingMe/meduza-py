@@ -1,194 +1,14 @@
+from meduza.errors import ColumnValueError
 
 __author__ = 'dvirsky'
 
 import queries
 import logging
-import datetime
-import bson
 
-class Column(object):
+from columns import Column, Key
 
-    def __init__(self, name, default = None):
 
-        self.name = name
-        self.primary = False
-        self._default = default
-
-
-    def default(self):
-
-        if callable(self._default):
-            return self._default()
-
-        return self._default
-
-
-
-    def toFilter(self, condition, values):
-
-
-        return queries.Filter(self.name, condition, values)
-
-    def __eq__(self, other):
-
-        return self.toFilter(queries.Condition.EQ, other)
-
-    def __gt__(self, other):
-
-        return self.toFilter(queries.Condition.GT, other)
-
-    def IN(self, *other):
-        return self.toFilter(queries.Condition.IN, other)
-
-
-
-NIL = '{NIL}'
-
-
-class Key(Column):
-
-    def __init__(self, name):
-
-        Column.__init__(self, name)
-        self.primary = True
-
-
-    def decode(self, data):
-
-        print data, type(data)
-        if data == NIL or data is None:
-            return None
-
-        elif isinstance(data, unicode):
-            return data.encode('utf-8')
-        elif isinstance(data, bson.Binary):
-            return str(data)
-
-        return '%s' % data
-
-    def encode(self, data):
-
-        if data == NIL or data is None:
-            return None
-
-        if isinstance(data, unicode):
-            return data.encode('utf-8')
-        elif isinstance(data, bson.Binary):
-            return str(data)
-
-        return '%s' % data
-
-class Text(Column):
-    """
-    Representing a text column
-    """
-
-    def decode(self, data):
-
-        if data == NIL or data is None:
-            return None
-
-        if isinstance(data, unicode):
-            return data.encode('utf-8')
-
-        return '%s' % data
-
-    def encode(self, data):
-
-        if data is None or data == NIL:
-            return None
-
-        if isinstance(data, unicode):
-            return data.encode('utf-8')
-
-        return '%s' % data
-
-
-class Int(Column):
-    """ Representing an integer column """
-    def decode(self, data):
-        return int(data) if data is not None else None
-
-    def encode(self, data):
-        return int(data) if data is not None else None
-
-import math
-
-class Uint(Column):
-    """
-    Representing an unsigned integer column
-    """
-    def decode(self, data):
-        long(-data if data < 0 else data) if data is not None else None
-
-    def encode(self, data):
-        long(-data if data < 0 else data) if data is not None else None
-
-class Float(Column):
-    """ Representing an integer column """
-    def decode(self, data):
-        return float(data) if data is not None else None
-
-    def encode(self, data):
-        return float(data) if data is not None else None
-
-class Binary(Column):
-    """ Representing an integer column """
-    def decode(self, data):
-        return bytearray(data) if data is not None else None
-
-    def encode(self, data):
-        return bytearray(data) if data is not None else None
-
-class Timestamp(Column):
-
-    @classmethod
-    def now(cls):
-
-        return datetime.datetime.utcnow()
-
-    
-    def decode(self, data):
-        if data == None:
-            return None
-
-        if isinstance(data, datetime.datetime):
-            return data
-        #convert time.time() based timestamps
-        elif isinstance(data, (long, int, float)):
-            return datetime.datetime.utcfromtimestamp(data)
-
-        raise ValueError("Invalid value for datetime: %s"%data)
-
-    def encode(self, data):
-        if data is None:
-            d = self.default()
-            if d is not None:
-                return self.encode(d)
-
-        return self.decode(data)
-
-
-
-class Bool(Column):
-
-    def decode(self, data):
-
-        if data is None:
-            return None
-
-        if isinstance(data, bool):
-            return data
-
-        elif isinstance(data, (int, long)):
-            return bool(data)
-
-        if isinstance(data, basestring):
-            return data == "1" or data.lower() == "true"
-
-    def encode(self, data):
-        return self.decode(data)
-
+ID = "id"
 
 def Model(table):
 
@@ -197,11 +17,16 @@ def Model(table):
 
         _table = table
         _columns = dict()
-        _primary = None
+        _primary = ID
+
+        id = Key(ID)
 
         def __init__(self, **kwargs):
 
+
             self.__dict__.update(kwargs)
+
+
 
             # If the object doesn't have a primary value, put none
             if not self.__dict__.has_key(self.primary()):
@@ -226,10 +51,12 @@ def Model(table):
             Return a map of the columns of the class by their internal name (not the table based name)
             :return:
             """
-            columns = {}
-            primary = None
+
 
             if not cls._columns:
+                columns = {}
+                primary = None
+
                 for  k,v in cls.__dict__.iteritems():
                     if  isinstance(v, Column):
                         columns[k] = v
@@ -237,8 +64,15 @@ def Model(table):
                         if v.primary:
                             primary = k
 
+                if primary is not None:
+                    cls._primary = primary
+                else:
+                    columns[_Model._primary] = getattr(_Model, _Model._primary)
                 cls._columns = columns
-                cls._primary = primary
+
+
+                if cls != _Model:
+                    cls._columns.update(_Model.columns())
             return cls._columns
 
 
@@ -276,18 +110,30 @@ def Model(table):
             :return:
             """
 
-            cols = self.__class__.columns()
+            cols = self.columns()
             primary = self.primary()
-            pcol = cols[self.primary()]
+            pcol = cols[primary]
 
             ent = queries.Entity(pcol.encode(getattr(self, primary)))
 
             for k, col in cols.iteritems():
 
                 if k == primary:
+
                     continue
-                ent.Properties[k] = col.encode(self.__dict__.get(k))
-                print k, ent.Properties[k]
+
+                if not self.__dict__.has_key(k):
+                    if col.required:
+                        raise ColumnValueError("Required column %s not set in %s" %(col.name, self._table))
+
+                    if not col.hasDefault:
+                        continue
+
+                data = self.__dict__.get(k) or col.default()
+                #print k, data
+                #col.validateChoices(data)
+                ent.Properties[k] = col.encode(data)
+
             return ent
 
 
@@ -296,6 +142,13 @@ def Model(table):
         def __repr__(self):
 
             return '%s<%s> %s' %(self._table, getattr(self, self._primary), self.__dict__)
+
+
+
+
+
+
+
 
 
         def setPrimary(self, val):

@@ -1,6 +1,7 @@
 .env
 .pyenv
 .idea
+,pypy
 *.pyc
 *.pyo
 

@@ -1,21 +1,21 @@
 import json
 
+
 __author__ = 'dvirsky'
 
 
 
-from queries import *
-from client import *
-from model import Model, Key, Text, Timestamp
-
+from meduza.queries import *
+from meduza.client import *
+from meduza.model import Model
+from meduza.columns import Key, Text, Timestamp, Set
+from meduza.errors import MeduzaError
 
 __client = None
 
 
-class MeduzaError(Exception):
-    pass
 
-def init(host='localhost', port=9977, timeout=0.1):
+def init(host='localhost', port=9977, timeout=0.5):
 
     global __client
 
@@ -29,7 +29,8 @@ def select(model, *filters, **kwargs):
     q = queries.GetQuery(model._table, filters=filters,
                          properties=kwargs.get('properties', tuple()),
                          order=kwargs.get('order', None),
-                         paging=kwargs.get('paging', None))
+                         paging=kwargs.get('paging', None) if kwargs.has_key('paging') else \
+                                (Paging(0, kwargs.get('limit')) if kwargs.has_key('limit') else None))
 
     res = __client.do(q)
 
@@ -59,41 +60,33 @@ def put(*objects):
     for obj in objects:
         q.add(obj.encode())
 
+
     res = __client.do(q)
+
+
 
     if res.error is not None:
         raise MeduzaError("Error putting objects: %s", res.error)
 
-    for id in res.ids:
-        obj.setPrimary(id)
+    for i, id in enumerate(res.ids):
+
+        objects[i].setPrimary(id)
+
     return res.ids
 
 
-class User(Model("Users")):
+def delete(model, *filters):
 
-    id = Key("id")
-    name = Text("name")
-    email = Text("email")
-    registrationTime = Timestamp("registrationTime", default=Timestamp.now)
+    q = queries.DelQuery(model._table, *filters)
+
+    res = __client.do(q)
+
+    if res.error is not None:
+        raise MeduzaError("Error deleting objects: %s", res.error)
+
+    return res.num
 
 
-
-
-
-if __name__ == '__main__':
-
-    init('localhost', 9977)
-
-    #print get(User, User.name == "dvir", paging=Paging(0,10))
-
-    u = User(name="dvir", email="dvir@everything.me", zmail="fo")
-    print u
-
-    ids = put(u)
-    print ids
-    print get(User, u.id)
-
-    # print select(User, User.name == "dvir")
 
 
 

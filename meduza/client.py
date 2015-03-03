@@ -51,6 +51,7 @@ class BsonProtocol(object):
         """
 
         try:
+
             res = bson.decode_all(msg.body)
         except BSONError as e:
             logging.exception("Could not decode message body")
@@ -60,6 +61,8 @@ class BsonProtocol(object):
             return queries.GetResponse(**res[0])
         elif msg.type == Message.PUT_RESPONSE:
             return queries.PutResponse(**res[0])
+        elif msg.type == Message.DELETE_RESPONSE:
+            return queries.DelResponse(**res[0])
 
         raise ValueError("Unkonwn message type %s", msg.type)
 
@@ -71,7 +74,7 @@ class BsonProtocol(object):
         """
 
         try:
-            d = self.dictify(data)
+            d = dictify(data)
         except Exception as e:
             logging.exception("Could not dictify object %s", data)
             raise e
@@ -101,6 +104,8 @@ class BsonProtocol(object):
             return Message.GET
         elif isinstance(data, queries.PutQuery):
             return Message.PUT
+        elif isinstance(data, queries.DelQuery):
+            return Message.DELETE
 
         logging.warn("Unknown message type %s", type(data))
         return None
@@ -109,27 +114,38 @@ class BsonProtocol(object):
 
 
 
-    primitives = (str, unicode, int, float, bool, types.NoneType, long, datetime.datetime)
+__primitives = {str, unicode, int, float, bool, types.NoneType, long, datetime.datetime}
+__iters = {list, tuple, set, frozenset}
 
-    @classmethod
-    def dictify(cls, obj):
-        """
-        Take an object and recursively translate its __dict__'s members to dicts,
-        returning a pure dict/list/primitive view of this object, so it can be serialized to BSON
-        :param obj:
-        :return:
-        """
 
-        if isinstance(obj, cls.primitives):
-            return obj
+def dictify(obj):
+    """
+    Take an object and recursively translate its __dict__'s members to dicts,
+    returning a pure dict/list/primitive view of this object, so it can be serialized to BSON
+    :param obj:
+    :return:
+    """
 
-        if isinstance(obj, (list, tuple, set, frozenset)):
-            return [cls.dictify(e) for e in obj]
 
-        elif isinstance(obj, dict):
-            return {k: cls.dictify(dv)  for k,dv in obj.iteritems()}
+    if type(obj) in __primitives:
+        return obj
 
-        return {k: cls.dictify(v) for k,v in obj.__dict__.iteritems()}
+    elif type(obj) in __iters:
+        l = list(obj)
+        for i in xrange(len(l)):
+            if type(l[i]) not in __primitives:
+                l[i] = dictify(l[i])
+        return l
+
+    elif isinstance(obj, dict):
+
+        d = obj.copy()
+        for k, v in d.iteritems():
+            if  type(v) not in __primitives:
+                d[k] = dictify(v)
+        return d
+
+    return dictify(obj.__dict__)
 
 
 
@@ -145,10 +161,15 @@ class RedisTransport(object):
         """
         We initialize the transport with a redis connection pool from which it takes a connection
         """
-
+        assert isinstance(pool, redis.ConnectionPool)
         self._conn = pool.get_connection("GET")
+        self._pool = pool
 
         assert(isinstance(self._conn, redis.Connection))
+
+    def __del__(self):
+
+        self._pool.release(self._conn)
 
 
     def sendMessage(self, msg):
@@ -157,7 +178,6 @@ class RedisTransport(object):
         :param msg: a serialized message
         """
         assert(isinstance(msg, Message))
-
         self._conn.connect()
         self._conn.send_command(msg.type, msg.body)
 
@@ -198,6 +218,7 @@ class RedisClient(object):
         """
 
         msg = self._proto.encodeMessage(query)
+
         transport.sendMessage(msg)
 
     def receive(self, transport):
@@ -207,10 +228,8 @@ class RedisClient(object):
         :param transport: a redis transport.
         :return:
         """
-
         msg = transport.receiveMessage()
-
-        return self._proto.decodeMessage(msg)
+        return  self._proto.decodeMessage(msg)
 
 
     def do(self, query):
