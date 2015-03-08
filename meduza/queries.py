@@ -21,6 +21,7 @@ class Condition(object):
     EQ = "="
     GT = ">"
     LT = "<"
+    ALL = "ALL"
 
 
 
@@ -29,6 +30,8 @@ class Entity(object):
     An entity represents a stored object in it's raw, schemaless form.
     You can work with entities directly, but for most cases you're better off mapping them to real objects
     """
+
+    ID = 'Id'
 
     def __init__(self, _key, **properties):
 
@@ -119,6 +122,18 @@ class GetQuery(object):
         self.Filters[prop] = Filter(prop, condition, *values)
 
         return self
+
+
+
+    def all(self):
+        """
+        Add a special filter to page on all ids with a certain paging
+        :return:
+        """
+
+        self.Filters[Entity.ID] = Condition.ALL
+
+
 
     def limit(self, limit):
         """
