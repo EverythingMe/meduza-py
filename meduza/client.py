@@ -26,6 +26,8 @@ class Message(object):
     SET_RESPONSE = "RSET"
     DELETE = "DEL"
     DELETE_RESPONSE = "RDEL"
+    UPDATE = "UPDATE"
+    UPDATE_RESPONSE = "RUPDATE"
 
 
     def __init__(self, msgType, data):
@@ -63,6 +65,8 @@ class BsonProtocol(object):
             return queries.PutResponse(**res[0])
         elif msg.type == Message.DELETE_RESPONSE:
             return queries.DelResponse(**res[0])
+        elif msg.type == Message.UPDATE_RESPONSE:
+            return queries.UpdateResponse(**res[0])
 
         raise ValueError("Unkonwn message type %s", msg.type)
 
@@ -106,6 +110,8 @@ class BsonProtocol(object):
             return Message.PUT
         elif isinstance(data, queries.DelQuery):
             return Message.DELETE
+        elif isinstance(data, queries.UpdateQuery):
+            return Message.UPDATE
 
         logging.warn("Unknown message type %s", type(data))
         return None

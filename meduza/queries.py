@@ -76,9 +76,17 @@ class Ordering(object):
     """
     ASC = 'ASC'
     DESC = 'DESC'
-    def __init__(self, by, asc):
+    def __init__(self, by, mode=ASC):
         self.By = by
-        self.Asc = True if asc == self.ASC else False
+        self.Ascending = mode == Ordering.ASC
+
+    @classmethod
+    def asc(cls, by):
+        return Ordering(by, cls.ASC)
+
+    @classmethod
+    def desc(cls, by):
+        return Ordering(by, cls.DESC)
 
 class Paging(object):
     """

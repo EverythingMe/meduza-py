@@ -1,9 +1,5 @@
 redis
-#bson>=0.3.3
 pymongo
 hiredis
-simplejson
-ujson
-
-
+requests
 
