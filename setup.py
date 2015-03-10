@@ -4,13 +4,6 @@ import os
 
 version = 0, 1
 
-def read_requirements():
-
-    name = os.path.join(os.path.dirname(os.path.abspath(__file__)),'requirements.txt')
-    
-    with open(name) as fp:
-        return filter(None, fp.read().splitlines())
-
 
 setup(
     name='meduza',
@@ -20,7 +13,7 @@ setup(
     author_email='dvir@everything.me',
     url='https://gitlab.doit9.com/backend/meduza-py',
     packages=find_packages(),
-    install_requires=read_requirements()
+    install_requires=['redis==2.10.3', 'pymongo==2.8','hiredis==0.1.6','requests==2.5.3']
 
 )
 
