@@ -50,8 +50,19 @@ class User(meduza.Model):
     groups = Set("groups", type=Text())
 
 
+import subprocess
+import time
+import os
+import sys
 
 class MeduzaTest(TestCase):
+
+
+    @classmethod
+    def runMeduza(cls):
+
+        cls.mdz = subprocess.Popen(('meduzad', '-test', '-port=9957'), stdout=sys.stdout)
+        time.sleep(0.5)
 
 
     @classmethod
@@ -61,16 +72,23 @@ class MeduzaTest(TestCase):
         deployUrl = "http://localhost:9966/deploy?name=testung"
 
         res = requests.post(deployUrl, schema, headers={"Content-Type": "text/yaml"})
+        if res.status_code != 200 or res.content != 'OK':
+            cls.fail("Failed deploying schema: %s" % res)
 
-        print res
+
 
     @classmethod
     def setUpClass(cls):
 
+        cls.runMeduza()
+
         cls.installSchema()
-        meduza.init("localhost", 9977)
+        meduza.init("localhost", 9957)
 
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.mdz.terminate()
 
     def setUp(self):
         self.users = []
@@ -85,6 +103,7 @@ class MeduzaTest(TestCase):
     def tearDown(self):
         pass
         meduza.delete(User, User.id.IN(*[u.id for u in self.users]))
+
 
     def testPut(self):
 
