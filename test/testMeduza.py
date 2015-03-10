@@ -64,7 +64,7 @@ class MeduzaTest(TestCase):
         meduzad = os.getenv('MEDUZA_BIN', 'meduzad')
 
         cls.mdz = subprocess.Popen((meduzad, '-test', '-port=9957'), stdout=sys.stdout)
-        time.sleep(0.5)
+        time.sleep(1)
 
 
     @classmethod
