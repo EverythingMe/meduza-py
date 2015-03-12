@@ -35,12 +35,12 @@ class Entity(object):
 
     def __init__(self, _key, **properties):
 
-        self.Id = _key
-        self.Properties = properties
+        self.id = _key
+        self.properties = properties
 
     def __repr__(self):
 
-        return 'Entity<%s>: %s' % (self.Id, self.Properties)
+        return 'Entity<%s>: %s' % (self.id, self.properties)
 
 
 
@@ -50,8 +50,8 @@ class Response(object):
     """
     def __init__(self, **kwargs):
 
-        self.error = kwargs.get('Error', None)
-        self.time = kwargs.get('Time', )
+        self.error = kwargs.get('error', None)
+        self.time = kwargs.get('time', )
 
 
 
@@ -63,12 +63,12 @@ class Filter(object):
     """
 
     def __init__(self, property, op, *values):
-        self.Property = property
-        self.Operator = op
-        self.Values = values
+        self.property = property
+        self.op = op
+        self.values = values
 
     def __repr__(self):
-        return "Filter{%s %s %s}" % (self.Property, self.Operator, self.Values)
+        return "Filter{%s %s %s}" % (self.property, self.op, self.values)
 
 class Ordering(object):
     """
@@ -77,8 +77,8 @@ class Ordering(object):
     ASC = 'ASC'
     DESC = 'DESC'
     def __init__(self, by, mode=ASC):
-        self.By = by
-        self.Ascending = mode == Ordering.ASC
+        self.by = by
+        self.asc = mode == Ordering.ASC
 
     @classmethod
     def asc(cls, by):
@@ -93,8 +93,8 @@ class Paging(object):
     Paging represents the paging limitations of a selection query
     """
     def __init__(self, offset=0, limit=10):
-        self.Offset = offset
-        self.Limit = limit
+        self.offset = offset
+        self.limit = limit
 
 
 
@@ -102,7 +102,7 @@ def Filters(*filters):
 
     ret = {}
     for flt in filters:
-        ret[flt.Property] = flt
+        ret[flt.property] = flt
 
     return ret
 
@@ -112,11 +112,11 @@ class GetQuery(object):
     """
     def __init__(self, table, properties = tuple(), filters=tuple(), order=None, paging=None):
 
-        self.Table = table
-        self.Properties = list(properties)
-        self.Filters = Filters(*filters)
-        self.Order = order
-        self.Paging =paging or Paging()
+        self.table = table
+        self.properties = list(properties)
+        self.filters = Filters(*filters)
+        self.order = order
+        self.paging =paging or Paging()
 
     def filter(self, prop, condition, *values):
         """
@@ -127,7 +127,7 @@ class GetQuery(object):
         :return: the query object itself for builder-style syntax
         """
 
-        self.Filters[prop] = Filter(prop, condition, *values)
+        self.filters[prop] = Filter(prop, condition, *values)
 
         return self
 
@@ -139,7 +139,7 @@ class GetQuery(object):
         :return:
         """
 
-        self.Filters[Entity.ID] = Condition.ALL
+        self.filters[Entity.ID] = Condition.ALL
 
 
 
@@ -149,7 +149,7 @@ class GetQuery(object):
         :return: the query object itself for builder-style syntax
         """
 
-        self.Paging = Paging(0, limit)
+        self.paging = Paging(0, limit)
         return self
 
     def page(self, offset, limit):
@@ -162,7 +162,7 @@ class GetQuery(object):
         if offset >= limit or offset < 0 or limit <= 0:
             raise ValueError("Invalid offset/limit: {}-{}".format(offset,limit))
 
-        self.Paging= Paging(offset,limit)
+        self.paging= Paging(offset,limit)
         return self
 
 
@@ -174,8 +174,8 @@ class GetResponse(Response):
 
         Response.__init__(self, **kwargs)
 
-        self.entities = [Entity(e['Id'], **e['Properties']) for e in kwargs.get('Entities', [])]
-        self.total = kwargs.get('Total', 0)
+        self.entities = [Entity(e['id'], **e['properties']) for e in kwargs.get('entities', [])]
+        self.total = kwargs.get('total', 0)
 
 
     def load(self, model):
@@ -203,8 +203,8 @@ class PutQuery(object):
     """
     def __init__(self, table, *entities):
 
-        self.Table = table
-        self.Entities = list(entities)
+        self.table = table
+        self.entities = list(entities)
 
     def add(self, entity):
         """
@@ -212,7 +212,7 @@ class PutQuery(object):
         :param entity: an entity object. ** It can (and should) be with an empty id if you're inserting **
         :return: the query object itself for builder-style syntax
         """
-        self.Entities.append(entity)
+        self.entities.append(entity)
         return self
 
 
@@ -223,8 +223,8 @@ class PutResponse(Response):
     """
     def __init__(self, **kwargs):
 
-        Response.__init__(self, **kwargs)
-        self.ids = map(str, kwargs.get('Ids', []))
+        Response.__init__(self, **kwargs['Response'])
+        self.ids = map(str, kwargs.get('ids', []))
 
 
     def __repr__(self):
@@ -238,12 +238,12 @@ class DelQuery(object):
     """
     def __init__(self, table, *filters):
 
-        self.Table = table
-        self.Filters = Filters(*filters)
+        self.table = table
+        self.filters = Filters(*filters)
 
     def filter(self, prop, op, *values):
 
-        self.Filters[prop] = Filter(prop, op, *values)
+        self.filters[prop] = Filter(prop, op, *values)
         return self
 
 
@@ -252,7 +252,7 @@ class DelResponse(Response):
     def __init__(self, **kwargs):
 
         Response.__init__(self, **kwargs.get('Response', {}))
-        self.num = kwargs.get('Num', 0)
+        self.num = kwargs.get('num', 0)
 
 
 class Change(object):
@@ -270,9 +270,9 @@ class Change(object):
         if op != self.Set:
             raise ValueError("op %s not supported", op)
 
-        self.Property = property
-        self.Op = op
-        self.Value = value
+        self.property = property
+        self.op = op
+        self.value = value
 
     @classmethod
     def set(cls, prop, val):
@@ -289,9 +289,9 @@ class UpdateQuery(object):
     """
     def __init__(self, table, *filters, **values):
 
-        self.Table = table
-        self.Filters = Filters(*filters)
-        self.Changes = []
+        self.table = table
+        self.filters = Filters(*filters)
+        self.changes = []
         for k,v in values.iteritems():
            self.set(k, v)
 
@@ -304,7 +304,7 @@ class UpdateQuery(object):
         :return: the update query itself
         """
 
-        self.Filters[prop] = Filter(prop, operator, *values)
+        self.filters[prop] = Filter(prop, operator, *values)
         return self
 
     def set(self, prop, val):
@@ -314,7 +314,7 @@ class UpdateQuery(object):
         :param val: the changed value
         :return: the update query object itself
         """
-        self.Changes.append(Change.set(prop, val))
+        self.changes.append(Change.set(prop, val))
         return self
 
 class UpdateResponse(Response):
@@ -322,7 +322,7 @@ class UpdateResponse(Response):
     def __init__(self, **kwargs):
 
         Response.__init__(self, **kwargs.get('Response', {}))
-        self.num = kwargs.get('Num', 0)
+        self.num = kwargs.get('num', 0)
 
 
 

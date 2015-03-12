@@ -60,6 +60,7 @@ import time
 import os
 import sys
 
+PORT = 9975
 class MeduzaTest(TestCase):
 
 
@@ -68,7 +69,7 @@ class MeduzaTest(TestCase):
 
         meduzad = os.getenv('MEDUZA_BIN', 'meduzad')
 
-        cls.mdz = subprocess.Popen((meduzad, '-test', '-port=9957'), stdout=sys.stdout)
+        cls.mdz = subprocess.Popen((meduzad, '-test', '-port=%d' % PORT), stdout=sys.stdout)
         time.sleep(1)
 
 
@@ -79,6 +80,7 @@ class MeduzaTest(TestCase):
         deployUrl = "http://localhost:9966/deploy?name=testung"
 
         res = requests.post(deployUrl, schema, headers={"Content-Type": "text/yaml"})
+
         if res.status_code != 200 or res.content != 'OK':
             cls.fail("Failed deploying schema: %s" % res)
 
@@ -90,11 +92,12 @@ class MeduzaTest(TestCase):
         cls.runMeduza()
 
         cls.installSchema()
-        meduza.init("localhost", 9957)
+        meduza.init("localhost", PORT)
 
 
     @classmethod
     def tearDownClass(cls):
+        pass
         cls.mdz.terminate()
 
     def setUp(self):
@@ -110,8 +113,9 @@ class MeduzaTest(TestCase):
 
         self.ids = meduza.put(*self.users)
 
+
     def tearDown(self):
-        pass
+
         meduza.delete(User, User.id.IN(*[u.id for u in self.users]))
 
 
@@ -121,10 +125,6 @@ class MeduzaTest(TestCase):
         for i, u in enumerate(self.users):
             self.assertNotEqual(u.id, "")
             self.assertEqual(self.ids[i],u.id)
-
-
-
-
 
 
     def testGet(self):

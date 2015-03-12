@@ -106,9 +106,9 @@ class Model(object):
         cols = cls.columns()
 
         obj = object.__new__(cls)
-        obj.setPrimary(entity.Id)
+        obj.setPrimary(entity.id)
 
-        for k,v in entity.Properties.iteritems():
+        for k,v in entity.properties.iteritems():
 
             if  k == cls.primary():
                 continue
@@ -151,7 +151,7 @@ class Model(object):
             data = self.__dict__.get(col.modelName) or col.default()
             #print k, data
             #col.validateChoices(data)
-            ent.Properties[k] = col.encode(data)
+            ent.properties[k] = col.encode(data)
 
         return ent
 
