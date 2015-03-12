@@ -11,7 +11,25 @@ from .queries import Filter, Condition
 
 ID = "id"
 
+
+
+class ModelType(type):
+    """
+    Meta class for models, it injects the member name in a model of fields into the columns
+    """
+    @staticmethod
+    def __new__(cls, name, bases, dict):
+        for k, v in dict.iteritems():
+            if isinstance(v, Column):
+                v.modelName = k
+
+        return type.__new__(cls, name, bases, dict)
+
+
 class Model(object):
+
+    __metaclass__ = ModelType
+
 
     _table = None
     _columns = dict()
@@ -23,8 +41,6 @@ class Model(object):
 
 
         self.__dict__.update(kwargs)
-
-
 
         # If the object doesn't have a primary value, put none
         if not self.__dict__.has_key(self.primary()):
@@ -51,7 +67,7 @@ class Model(object):
     @classmethod
     def columns(cls):
         """
-        Return a map of the columns of the class by their internal name (not the table based name)
+        Return a map of the columns of the class by their *client* names, not class names
         :return:
         """
 
@@ -62,7 +78,7 @@ class Model(object):
 
             for  k,v in cls.__dict__.iteritems():
                 if  isinstance(v, Column):
-                    columns[k] = v
+                    columns[v.name] = v
 
                     if v.primary:
                         primary = k
@@ -102,7 +118,7 @@ class Model(object):
                 logging.warn("Could not map %s to object - not in model", k)
                 continue
 
-            setattr(obj, k, col.decode(v))
+            setattr(obj, col.modelName, col.decode(v))
 
         return obj
 
@@ -125,14 +141,14 @@ class Model(object):
 
                 continue
 
-            if not self.__dict__.has_key(k):
+            if not self.__dict__.has_key(col.modelName):
                 if col.required:
                     raise ColumnValueError("Required column %s not set in %s" %(col.name, self._table))
 
                 if not col.hasDefault:
                     continue
 
-            data = self.__dict__.get(k) or col.default()
+            data = self.__dict__.get(col.modelName) or col.default()
             #print k, data
             #col.validateChoices(data)
             ent.Properties[k] = col.encode(data)

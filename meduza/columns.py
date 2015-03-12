@@ -6,6 +6,7 @@ import bson
 
 from errors import ColumnValueError, MeduzaError
 
+
 class Column(object):
 
     NoDefault = "%%NDEF%%"
@@ -13,19 +14,19 @@ class Column(object):
     def __init__(self, name='', default = NoDefault, required=False, choices = None):
 
         self.name = name
+
         self.primary = False
         self.required = bool(required)
         self.hasDefault = False
         self._default = None
+        self.modelName = name
+
         if default != Column.NoDefault:
 
             self._default = default
             self.hasDefault = True
 
-
-
         self._choices = set(choices) if choices is not None else None
-
 
     def default(self):
 

@@ -34,6 +34,9 @@ tables:
                 type: Timestamp
             groups:
                 type: Set
+            wat:
+                type: Text
+                clientName: fancySuperLongNameWatWat
         indexes:
             -   type: compound
                 columns: [name,email]
@@ -48,6 +51,8 @@ class User(meduza.Model):
 
     registrationTime = Timestamp("registrationTime", default=Timestamp.now)
     groups = Set("groups", type=Text())
+
+    fancySuperLongNameWatWat = Text("wat")
 
 
 import subprocess
@@ -97,7 +102,10 @@ class MeduzaTest(TestCase):
         self.ids =[]
         for i in xrange(10):
 
-            u = User(name = "user %d" % i, email = "user%d@domain.com" % i, groups = set(("g%d" % x for x in xrange(i, i+3))))
+            u = User(name = "user %d" % i, email = "user%d@domain.com" % i,
+                     groups = set(("g%d" % x for x in xrange(i, i+3))),
+                     fancySuperLongNameWatWat = "watwat",
+                     )
             self.users.append(u)
 
         self.ids = meduza.put(*self.users)
@@ -116,6 +124,9 @@ class MeduzaTest(TestCase):
 
 
 
+
+
+
     def testGet(self):
         users = meduza.get(User, *[u.id for u in self.users])
 
@@ -126,6 +137,9 @@ class MeduzaTest(TestCase):
             self.assertEquals(u.name, users[i].name)
             self.assertEquals(u.email, users[i].email)
             self.assertEquals(u.groups, users[i].groups)
+            self.assertTrue(bool(u.fancySuperLongNameWatWat))
+            self.assertEqual(u.fancySuperLongNameWatWat, users[i].fancySuperLongNameWatWat)
+
 
 
     def testSelect(self):
