@@ -29,6 +29,10 @@ class Message(object):
     UPDATE = "UPDATE"
     UPDATE_RESPONSE = "RUPDATE"
 
+    PING = "PING"
+    PING_RESPONSE = "PONG"
+
+
 
     def __init__(self, msgType, data):
 
@@ -67,6 +71,8 @@ class BsonProtocol(object):
             return queries.DelResponse(**res[0])
         elif msg.type == Message.UPDATE_RESPONSE:
             return queries.UpdateResponse(**res[0])
+        elif msg.type == Message.PING_RESPONSE:
+            return queries.PingResponse(**res[0])
 
         raise ValueError("Unkonwn message type %s", msg.type)
 
@@ -112,6 +118,8 @@ class BsonProtocol(object):
             return Message.DELETE
         elif isinstance(data, queries.UpdateQuery):
             return Message.UPDATE
+        elif isinstance(data, queries.PingQuery):
+            return Message.PING
 
         logging.warn("Unknown message type %s", type(data))
         return None
@@ -163,19 +171,14 @@ class RedisTransport(object):
     Currently we have just one transport - redis transport
     """
 
-    def __init__(self, pool):
+    def __init__(self, host, port, timeout=None):
         """
         We initialize the transport with a redis connection pool from which it takes a connection
         """
-        assert isinstance(pool, redis.ConnectionPool)
-        self._conn = pool.get_connection("GET")
-        self._pool = pool
+
+        self._conn = redis.Connection(host,port, socket_timeout=timeout)
 
         assert(isinstance(self._conn, redis.Connection))
-
-    def __del__(self):
-
-        self._pool.release(self._conn)
 
 
     def sendMessage(self, msg):
@@ -209,12 +212,12 @@ class RedisClient(object):
 
     def __init__(self, host='localhost', port=9977, timeout=0.1):
 
-        self._pool = redis.ConnectionPool(host=host,port=port, socket_timeout=timeout)
+        self._transport = RedisTransport(host, port, timeout)
         self._proto = BsonProtocol()
 
 
 
-    def send(self, query, transport):
+    def send(self, query):
         """
         Send a query to the server (without receiving the response)
         * Do not use this method unless for pipelining, use do() instead for single queries *
@@ -225,16 +228,16 @@ class RedisClient(object):
 
         msg = self._proto.encodeMessage(query)
 
-        transport.sendMessage(msg)
+        self._transport.sendMessage(msg)
 
-    def receive(self, transport):
+    def receive(self):
         """
         Received a response from the server and deserialize it into a response object
         * Do not use this method unless for pipelining, use do() instead for single queries *
         :param transport: a redis transport.
         :return:
         """
-        msg = transport.receiveMessage()
+        msg = self._transport.receiveMessage()
         return  self._proto.decodeMessage(msg)
 
 
@@ -246,11 +249,11 @@ class RedisClient(object):
         """
 
 
-        conn = RedisTransport(self._pool)
 
-        self.send(query, conn)
 
-        return self.receive(conn)
+        self.send(query)
+
+        return self.receive()
 
 
 

@@ -17,6 +17,7 @@ from meduza.queries import Ordering
 from unittest import TestCase
 import requests
 
+
 schema = """
 tables:
     TestUsers:
@@ -92,7 +93,7 @@ class MeduzaTest(TestCase):
         cls.runMeduza()
 
         cls.installSchema()
-        meduza.init("localhost", PORT)
+        meduza.init([("localhost", PORT)], [("localhost", PORT)])
 
 
     @classmethod

@@ -325,6 +325,16 @@ class UpdateResponse(Response):
         self.num = kwargs.get('num', 0)
 
 
+class PingQuery(object):
+
+    def __init__(self):
+        pass
+
+
+class PingResponse(Response):
+    pass
+
+
 
 
 

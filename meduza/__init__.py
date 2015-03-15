@@ -1,3 +1,7 @@
+from contextlib import contextmanager
+import socket
+from redis import RedisError
+
 __author__ = 'dvirsky'
 
 from meduza.queries import *
@@ -6,11 +10,42 @@ from meduza.model import Model
 from meduza.columns import Key, Text, Timestamp, Set
 from meduza.errors import MeduzaError, ModelError, RequestError
 
-__client = None
+from bandit_lb import LoadBalancer
+
+#__client = None
+
+__masterLb = None
+__slaveLb = None
+
+__timeout = 0.5
 
 
+def __connect(host, port):
 
-def init(host='localhost', port=9977, timeout=0.5):
+    return RedisClient(host, port, __timeout)
+
+def __ping(client):
+
+    q= PingQuery()
+    res = client.do(q)
+    if res.error is None:
+        return True
+    return False
+
+@contextmanager
+def _slaveConn():
+    client = __slaveLb.getConnection()
+    yield client
+    __slaveLb.repoolConnection(client)
+
+@contextmanager
+def _masterConn():
+    client = __masterLb.getConnection()
+    yield client
+    __masterLb.repoolConnection(client)
+
+
+def init(master, slaves, timeout=0.5):
     """
     init and configure the meduza client
     :param host:
@@ -18,9 +53,27 @@ def init(host='localhost', port=9977, timeout=0.5):
     :param timeout:
     :return:
     """
-    global __client
+    logging.info("Initializing meduza client bandit")
+    global __masterLb, __slaveLb
+    global __timeout
+    __timeout = timeout
 
-    __client = RedisClient(host, port, timeout)
+    __masterLb = LoadBalancer(connectionInitCallback=__connect, name='MeduzaMaster',
+                           monitoredExceptions=(socket.error, RedisError),
+                           servers=master,
+                           pingCallback=__ping,
+                           pingInterval=2.0, connectionTTL=50, maxRetries=1, minHealthRatio=0.1)
+
+    __slaveLb = LoadBalancer(connectionInitCallback=__connect, name='MeduzaMaster',
+                           monitoredExceptions=(socket.error, RedisError),
+                           servers=master,
+                           pingCallback=__ping,
+                           pingInterval=2.0, connectionTTL=50, maxRetries=1, minHealthRatio=0.1)
+
+    # # Bind to dynamic configuration notifications
+    # dynamic_configuration.Manager.addChangeListener((config.geodesic_client, 'geodesic_servers'),
+    #                                       lambda path, servers: __lb.reloadServers(servers))
+
 
 
 
@@ -43,7 +96,8 @@ def select(model, *filters, **kwargs):
                          paging=kwargs.get('paging', None) if kwargs.has_key('paging') else \
                                 (Paging(0, kwargs.get('limit')) if kwargs.has_key('limit') else None))
 
-    res = __client.do(q)
+    with _slaveConn() as client:
+        res = client.do(q)
 
     if res.error is not None:
         raise RequestError(res.error)
@@ -66,7 +120,8 @@ def get(model, *ids):
 
     q = queries.GetQuery(model._table).filter(model._primary, Condition.IN, *ids)
 
-    res = __client.do(q)
+    with _slaveConn() as client:
+        res = client.do(q)
 
     if res.error is not None:
         raise RequestError(res.error)
@@ -98,8 +153,8 @@ def put(*objects):
 
         q.add(obj.encode())
 
-
-    res = __client.do(q)
+    with _masterConn() as client:
+        res = client.do(q)
 
 
     if res.error is not None:
@@ -121,7 +176,9 @@ def delete(model, *filters):
     """
     q = queries.DelQuery(model._table, *filters)
 
-    res = __client.do(q)
+
+    with _masterConn() as client:
+        res = client.do(q)
 
     if res.error is not None:
         raise RequestError("Error deleting objects: %s", res.error)
@@ -134,7 +191,8 @@ def update(model, *filters, **changes):
 
     q = queries.UpdateQuery(model._table, *filters, **changes)
 
-    res = __client.do(q)
+    with _masterConn() as client:
+        res = client.do(q)
 
     if res.error is not None:
         raise RequestError("Error deleting objects: %s", res.error)
