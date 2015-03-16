@@ -71,7 +71,7 @@ def init(master, slaves, timeout=0.5):
 
     __slaveLb = LoadBalancer(connectionInitCallback=__connect, name='MeduzaMaster',
                            monitoredExceptions=(socket.error, RedisError),
-                           servers=master,
+                           servers=slaves,
                            pingCallback=__ping,
                            pingInterval=2.0, connectionTTL=50, maxRetries=1, minHealthRatio=0.1)
 
