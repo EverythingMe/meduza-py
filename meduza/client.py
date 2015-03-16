@@ -8,7 +8,7 @@ from bson.errors import BSONError
 import time
 import datetime
 
-import queries
+from . import queries
 
 
 

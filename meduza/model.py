@@ -2,11 +2,11 @@ from meduza.errors import ColumnValueError
 
 __author__ = 'dvirsky'
 
-import queries
+
 import logging
 
 from .columns import Column, Key
-from .queries import Filter, Condition
+from .queries import Filter, Condition, Entity
 
 
 ID = "id"
@@ -133,7 +133,7 @@ class Model(object):
         primary = self.primary()
         pcol = cols[primary]
 
-        ent = queries.Entity(pcol.encode(getattr(self, primary)))
+        ent = Entity(pcol.encode(getattr(self, primary)))
 
         for k, col in cols.iteritems():
 

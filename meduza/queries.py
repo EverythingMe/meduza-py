@@ -9,7 +9,7 @@ without knowing what you're doing and modifying the server code accordingly.
 
 ** * * /WARNING * * **
 """
-from UserDict import DictMixin, UserDict
+
 
 
 class Condition(object):

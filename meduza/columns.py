@@ -1,11 +1,10 @@
 __author__ = 'dvirsky'
-import queries
-import logging
+
 import datetime
 import bson
 
-from errors import ColumnValueError, MeduzaError
-
+from .errors import ColumnValueError, MeduzaError
+from . import queries
 
 class Column(object):
 
