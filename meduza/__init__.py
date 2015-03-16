@@ -10,7 +10,11 @@ from meduza.model import Model
 from meduza.columns import Key, Text, Timestamp, Set
 from meduza.errors import MeduzaError, ModelError, RequestError
 
-from bandit_lb import LoadBalancer
+try:
+    from bandit_lb import LoadBalancer
+except ImportError:
+    #this is used because we import meduza for testing purposes without actually using the client.
+    logging.error("Bandit unavailable. Cannot init meduza client")
 
 #__client = None
 
