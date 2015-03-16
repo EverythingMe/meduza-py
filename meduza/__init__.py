@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 import socket
 from redis import RedisError
-
+import os
 __author__ = 'dvirsky'
 
 from meduza.queries import *
@@ -14,7 +14,8 @@ try:
     from bandit_lb import LoadBalancer
 except ImportError:
     #this is used because we import meduza for testing purposes without actually using the client.
-    logging.error("Bandit unavailable. Cannot init meduza client")
+    if not os.getenv("TEST", False):
+        raise
 
 #__client = None
 
