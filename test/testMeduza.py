@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import logging
 
 __author__ = 'dvirsky'
 
@@ -12,8 +13,7 @@ except ImportError:
 
 import meduza
 from meduza.columns import Text, Timestamp, Key, Set, Float, Int, List
-from meduza.queries import Ordering
-from meduza.client import RedisClient
+from meduza.queries import Ordering, PingQuery
 from unittest import TestCase
 import requests
 
@@ -62,15 +62,12 @@ import os
 import sys
 
 PORT = 9975
-
-
-
 class MeduzaTest(TestCase):
 
 
     @classmethod
     def runMeduza(cls):
-
+        return
         meduzad = os.getenv('MEDUZA_BIN', 'meduzad')
 
         cls.mdz = subprocess.Popen((meduzad, '-test', '-port=%d' % PORT), stdout=sys.stdout)
@@ -96,18 +93,15 @@ class MeduzaTest(TestCase):
         cls.runMeduza()
 
         cls.installSchema()
+        provider = meduza.customProvider('localhost', PORT)
+        meduza.setup(provider, provider)
 
-        @contextmanager
-        def clientProvider():
-            yield RedisClient('localhost', PORT)
-
-        meduza.setup(clientProvider, clientProvider)
 
 
     @classmethod
     def tearDownClass(cls):
         pass
-        cls.mdz.terminate()
+        #cls.mdz.terminate()
 
     def setUp(self):
         self.users = []
@@ -215,4 +209,15 @@ class MeduzaTest(TestCase):
 
         users = meduza.select(User, User.name==u.name,  User.email==u.email)
         self.assertEqual(len(users), 0)
+
+
+    def testPing(self):
+
+        with meduza.customProvider('localhost', PORT)() as client:
+
+            ret = client.do(PingQuery())
+            self.assertIsNotNone(ret)
+
+            self.assertIsNone(ret.error)
+
 

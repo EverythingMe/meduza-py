@@ -12,6 +12,14 @@ _masterProvider = None
 _slaveProvider = None
 
 
+def customProvider(host, port, timeout=0.5):
+
+    @contextmanager
+    def provider():
+        yield RedisClient(host=host, port=port,timeout=timeout)
+
+    return provider
+
 @contextmanager
 def defaultProvider():
     yield RedisClient()
