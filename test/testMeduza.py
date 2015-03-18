@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-import logging
 
 __author__ = 'dvirsky'
 
@@ -14,6 +13,7 @@ except ImportError:
 import meduza
 from meduza.columns import Text, Timestamp, Key, Set, Float, Int, List
 from meduza.queries import Ordering
+from meduza.client import RedisClient
 from unittest import TestCase
 import requests
 
@@ -62,6 +62,9 @@ import os
 import sys
 
 PORT = 9975
+
+
+
 class MeduzaTest(TestCase):
 
 
@@ -93,7 +96,12 @@ class MeduzaTest(TestCase):
         cls.runMeduza()
 
         cls.installSchema()
-        meduza.init([("localhost", PORT)], [("localhost", PORT)])
+
+        @contextmanager
+        def clientProvider():
+            yield RedisClient('localhost', PORT)
+
+        meduza.setup(clientProvider, clientProvider)
 
 
     @classmethod
