@@ -62,7 +62,7 @@ def select(model, *filters, **kwargs):
     else:
         paging = None
 
-    q = queries.GetQuery(model._table, filters=filters,
+    q = queries.GetQuery(model.tableName(), filters=filters,
                          properties=kwargs.get('properties', tuple()),
                          order=kwargs.get('order', None),
                          paging=paging)
@@ -87,7 +87,7 @@ def get(model, *ids):
         if not isinstance(id, basestring):
             raise MeduzaError("Invalid id type: %s", type(id))
 
-    q = queries.GetQuery(model._table).filter(model._primary, Condition.IN, *ids)
+    q = queries.GetQuery(model.tableName()).filter(model.primary(), Condition.IN, *ids)
 
     with _slaveProvider() as client:
         res = client.do(q)
@@ -108,7 +108,8 @@ def put(*objects):
     :param objects: a list of model objects of the same class
     :return: the ids resulting from putting the objects into meduza
     """
-    q = queries.PutQuery(objects[0]._table)
+    q = queries.PutQuery(objects[0].tableName())
+
     cls = None
     for obj in objects:
         if cls is None:
@@ -142,7 +143,7 @@ def delete(model, *filters):
     :param filters: a list of filters
     :return: the number of entities deleted
     """
-    q = queries.DelQuery(model._table, *filters)
+    q = queries.DelQuery(model.tableName(), *filters)
 
     with _masterProvider() as client:
         res = client.do(q)
@@ -154,7 +155,7 @@ def delete(model, *filters):
 
 
 def update(model, *filters, **changes):
-    q = queries.UpdateQuery(model._table, *filters, **changes)
+    q = queries.UpdateQuery(model.tableName(), *filters, **changes)
 
     with _masterProvider() as client:
         res = client.do(q)

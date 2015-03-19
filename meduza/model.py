@@ -32,6 +32,7 @@ class Model(object):
 
 
     _table = None
+    _schema = None
     _columns = dict()
     _primary = ID
 
@@ -155,6 +156,15 @@ class Model(object):
 
         return ent
 
+
+    @classmethod
+    def tableName(cls):
+        """
+        Get the full quailified table name with its schema namespace
+        :return:
+        """
+
+        return '%s.%s' % (cls._schema, cls._table)
 
     def __repr__(self):
 

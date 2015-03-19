@@ -19,8 +19,9 @@ import requests
 
 
 schema = """
+schema: pytest
 tables:
-    TestUsers:
+    Users:
         engines:
             - redis
         primary:
@@ -45,7 +46,8 @@ tables:
 
 class User(meduza.Model):
 
-    _table = "TestUsers"
+    _table = "Users"
+    _schema = "pytest"
 
     name = Text("name", required=True)
     email = Text("email", default='')
@@ -67,7 +69,7 @@ class MeduzaTest(TestCase):
 
     @classmethod
     def runMeduza(cls):
-        return
+
         meduzad = os.getenv('MEDUZA_BIN', 'meduzad')
 
         cls.mdz = subprocess.Popen((meduzad, '-test', '-port=%d' % PORT), stdout=sys.stdout)
@@ -101,7 +103,7 @@ class MeduzaTest(TestCase):
     @classmethod
     def tearDownClass(cls):
         pass
-        #cls.mdz.terminate()
+        cls.mdz.terminate()
 
     def setUp(self):
         self.users = []
@@ -148,7 +150,7 @@ class MeduzaTest(TestCase):
     def testSelect(self):
 
         u = self.users[0]
-        users = meduza.select(User, User.name==u.name,  User.email==u.email)
+        users = meduza.select(User, User.name == u.name,  User.email == u.email)
 
         self.assertEqual(len(users), 1)
 
