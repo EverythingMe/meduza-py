@@ -95,7 +95,7 @@ class MeduzaTest(TestCase):
         cls.runMeduza()
 
         cls.installSchema()
-        provider = meduza.customProvider('localhost', PORT)
+        provider = meduza.customConnector('localhost', PORT)
         meduza.setup(provider, provider)
 
 
@@ -215,7 +215,7 @@ class MeduzaTest(TestCase):
 
     def testPing(self):
 
-        with meduza.customProvider('localhost', PORT)() as client:
+        with meduza.customConnector('localhost', PORT)() as client:
 
             ret = client.do(PingQuery())
             self.assertIsNotNone(ret)
