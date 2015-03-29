@@ -66,10 +66,15 @@ class Session(object):
         if res.error is not None:
             raise RequestError(res.error)
 
-        return res.load(model)
+        objs = res.load(model)
+
+        if kwargs.get('withTotal'):
+            return objs, res.total
+        else:
+            return objs
 
 
-    def get(self, model, *ids):
+    def get(self, model,  *ids, **kwargs):
         """
         Get objects by id(s), automatically generating instances of the model class
         :param model: a model class used to generate objects from the returned entities
@@ -88,7 +93,11 @@ class Session(object):
         if res.error is not None:
             raise RequestError(res.error)
 
-        return res.load(model)
+        objs = res.load(model)
+        if kwargs.get('withTotal'):
+            return objs, res.total
+        else:
+            return objs
 
 
     def put(self, *objects):
@@ -166,6 +175,19 @@ class Session(object):
         return res.num
 
 
+    def count(self, model, *filters):
+        """
+        Count the total number of objects matching a set of filters.
+        If filters are empty, we inject a filter for counting all objects in this model
+        """
+
+        # Add an ALL filter if no filters are present
+        if not filters:
+            filters = [model.all()]
+
+        _, num = self.select(model, withTotal=True,  limit=1, *filters)
+        return num
+
 _defaultSession = None
 
 
@@ -183,18 +205,34 @@ def setup(masterConnector = defaultConnector, slaveConnector = defaultConnector)
 
 
 def select(model, *filters, **kwargs):
+    """
+    Select objects based on secondary indexes. The model class is used to construct object instances
+
+    :param model: a model class to create instances from
+    :param filters: a list of filters
+    :param kwargs: extra parameters:
+        * properties - a list of properties to get (NOT SUPPORTED SERVER SIDE YET)
+        * order - an ordering object (order by ? asc/desc)
+        * paging - start/offset
+        * limit - same as paging but start=0
+        * withTotal - if set to True we also return a total of the rows matching this query
+    :return: a list of objects generated from the model class
+    """
+
     return _defaultSession.select(model, *filters, **kwargs)
 
-def get(self, model, *ids):
+def get(model, *ids, **kwargs):
     """
-    Get objects by id(s) from the default session, automatically generating instances of the model class
+    Get objects by id(s) from the default session, automatically generating instances of the model class.
+    If kwargs['withTotal'] is set to True we also return a total of the rows matching this query
     :param model: a model class used to generate objects from the returned entities
     :param ids: a set of id strings
+
     :return: a list of model object instances
     """
-    return _defaultSession.get(self, model, *ids)
+    return _defaultSession.get(model, *ids)
 
-def put(self, *objects):
+def put(*objects):
     """
     Put a bunch of model objects into meduza using the Default Session
     If the objects have an id set, it is respected by the server. If not, a new id is generated and the objects
@@ -204,18 +242,18 @@ def put(self, *objects):
     :param objects: a list of model objects of the same class
     :return: the ids resulting from putting the objects into meduza
     """
-    return _defaultSession.put(self, *objects)
+    return _defaultSession.put(*objects)
 
-def delete(self, model, *filters):
+def delete(model, *filters):
     """
     Delete from a model, based on a series of filters using the Default Session
     :param model: a model class. This is just used to extract the table name
     :param filters: a list of filters
     :return: the number of entities deleted
     """
-    return _defaultSession.delete(self, model, *filters)
+    return _defaultSession.delete(model, *filters)
 
-def update(self, model, *filters, **changes):
+def update(model, *filters, **changes):
     """
     Update performs an UPDATE query on the model
     :param model: a model class we use to take the table name from
@@ -223,4 +261,8 @@ def update(self, model, *filters, **changes):
     :param changes: a set of key=value changes to set. e.g. name="Foo"
     :return: the number of updated entities
     """
-    return _defaultSession.update(self, model, *filters, **changes)
+    return _defaultSession.update(model, *filters, **changes)
+
+def count(model, *filters):
+
+    return _defaultSession.count(model, *filters)

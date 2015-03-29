@@ -64,6 +64,7 @@ import os
 import sys
 
 PORT = 9975
+
 class MeduzaTest(TestCase):
 
 
@@ -188,6 +189,13 @@ class MeduzaTest(TestCase):
             self.assertEquals(u.email, users[i].email)
             self.assertEquals(u.groups, users[i].groups)
 
+    def testCount(self):
+
+        n = meduza.count(User, User.all())
+        self.assertEquals(n, len(self.users))
+
+        n = meduza.count(User)
+        self.assertEquals(n, len(self.users))
 
     def testDelete(self):
 
