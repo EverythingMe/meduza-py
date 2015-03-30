@@ -118,6 +118,10 @@ class Text(Column):
         if data == NIL or data is None:
             return None
 
+        #check that the lendth is not too big
+        if 0 < self.maxLen < len(data):
+            raise ColumnValueError("Value for %s too large, allowed %d, have %d" % (self.name, self.maxLen, len(data)))
+
         if isinstance(data, unicode):
             return data.encode('utf-8')
 
@@ -136,9 +140,6 @@ class Text(Column):
         elif not isinstance(data, str):
             data = '%s' % data
 
-        #check that the lendth is not too big
-        if 0 < self.maxLen < len(data):
-            raise ColumnValueError("Value for %s too large, allowed %d, have %d" % (self.name, self.maxLen, len(data)))
 
         return data
 
