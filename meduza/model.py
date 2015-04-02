@@ -88,12 +88,13 @@ class Model(object):
                 cls._primary = primary
             else:
                 columns[Model._primary] = getattr(Model, Model._primary)
-            cls._columns = columns
-
 
             if cls != Model:
+                cls._columns = columns
                 cls._columns.update(Model.columns())
-        return cls._columns
+            return columns
+        else:
+            return cls._columns
 
 
 
