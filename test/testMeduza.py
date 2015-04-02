@@ -12,7 +12,7 @@ except ImportError:
         import json
 
 import meduza
-from meduza.columns import Text, Timestamp, Key, Set, Float, Int, List
+from meduza.columns import Text, Timestamp, Key, Set, Float, Int, List, Map
 from meduza.queries import Ordering, PingQuery
 from unittest import TestCase
 import requests
@@ -39,6 +39,11 @@ tables:
             wat:
                 type: Text
                 clientName: fancySuperLongNameWatWat
+
+            mapr:
+                type: Map
+                options:
+                    subtype: Text
         indexes:
             -   type: compound
                 columns: [name,email]
@@ -57,6 +62,7 @@ class User(meduza.Model):
 
     fancySuperLongNameWatWat = Text("wat")
 
+    mapr = Map("mapr", type=Text())
 
 import subprocess
 import time
@@ -114,10 +120,12 @@ class MeduzaTest(TestCase):
             u = User(name = "user %d" % i, email = "user%d@domain.com" % i,
                      groups = set(("g%d" % x for x in xrange(i, i+3))),
                      fancySuperLongNameWatWat = "watwat",
+                     mapr = {"foo": "bar"},
                      )
             self.users.append(u)
 
         self.ids = meduza.put(*self.users)
+
 
 
     def tearDown(self):

@@ -306,3 +306,37 @@ class List(Column):
         return ret
 
 
+class Map(Column):
+    """
+    Representing a list column
+    """
+
+    def __init__(self, name, type=None, default = None):
+
+
+        Column.__init__(self, name, default=default)
+        self._type = type
+
+
+    def decode(self, data):
+
+        if data == NIL or data is None:
+            return None
+
+        if not isinstance(data, dict):
+            raise MeduzaError("Invalid type for decoded set: %s", type(data))
+
+        return {k: self._type.decode(v) for k,v in data.iteritems()}
+
+
+
+    def encode(self, data):
+
+        if data is None or data == NIL:
+            return None
+
+        if not isinstance(data, dict):
+            raise ValueError("Invalid data for set: %s", type(data))
+
+        return {k: self._type.encode(v) for k,v in data.iteritems()}
+
