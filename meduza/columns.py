@@ -237,7 +237,7 @@ class Set(Column):
 
     IDENT = '__MDZS__'
 
-    def __init__(self, name, type=None, default = None):
+    def __init__(self, name, type=None, default = Column.NoDefault):
 
 
         Column.__init__(self, name, default=default)
@@ -274,7 +274,7 @@ class List(Column):
 
     IDENT = '__MDZL__'
 
-    def __init__(self, name, type=None, default = None):
+    def __init__(self, name, type=None, default = Column.NoDefault):
 
 
         Column.__init__(self, name, default=default)
@@ -311,7 +311,7 @@ class Map(Column):
     Representing a list column
     """
 
-    def __init__(self, name, type=None, default = None):
+    def __init__(self, name, type=None, default = Column.NoDefault):
 
 
         Column.__init__(self, name, default=default)
