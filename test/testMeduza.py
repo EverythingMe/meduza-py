@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import logging
+import signal
 
 __author__ = 'dvirsky'
 
@@ -77,10 +78,11 @@ class MeduzaTest(TestCase):
     @classmethod
     def runMeduza(cls):
 
-        meduzad = os.getenv('MEDUZA_BIN', 'meduzad')
+        meduzad = os.getenv('MEDUZA_BIN', '../run_mdz_docker.sh')
 
-        cls.mdz = subprocess.Popen((meduzad, '-test', '-port=%d' % PORT), stdout=sys.stdout)
-        time.sleep(10)
+        cls.mdz = subprocess.Popen((meduzad, '-test', '-port=%d' % PORT), stdout=sys.stdout, stderr=sys.stderr)
+
+        time.sleep(2.5)
 
 
     @classmethod
@@ -101,7 +103,13 @@ class MeduzaTest(TestCase):
 
         cls.runMeduza()
 
-        cls.installSchema()
+        try:
+            cls.installSchema()
+        except Exception:
+            logging.exception("Failed installig schema")
+            cls.tearDownClass()
+            sys.exit(-1)
+
         provider = meduza.customConnector('localhost', PORT)
         meduza.setup(provider, provider)
 
@@ -110,7 +118,10 @@ class MeduzaTest(TestCase):
     @classmethod
     def tearDownClass(cls):
         pass
-        cls.mdz.terminate()
+        if cls.mdz is not None:
+            cls.mdz.send_signal(signal.SIGTERM)
+
+        #cls.mdz.terminate()
 
     def setUp(self):
         self.users = []
