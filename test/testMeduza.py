@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 import logging
 import signal
+import socket
 
 __author__ = 'dvirsky'
 
@@ -72,6 +73,28 @@ import sys
 
 PORT = 9975
 
+
+def waitPort(host, port, timeout=5.0):
+    """
+    Wait until a socket becomes available for accepting connections
+    :param host:
+    :param port:
+    :param timeout:
+    :return:
+    """
+    st = time.time()
+    while st + 10 > time.time():
+        try:
+            sock = socket.create_connection((host,port), timeout=timeout)
+        except socket.error:
+            continue
+        else:
+            sock.close()
+            return True
+
+    return False
+
+
 class MeduzaTest(TestCase):
 
 
@@ -82,7 +105,9 @@ class MeduzaTest(TestCase):
 
         cls.mdz = subprocess.Popen((meduzad, '-test', '-port=%d' % PORT), stdout=sys.stdout, stderr=sys.stderr)
 
-        time.sleep(2.5)
+        if not waitPort("localhost", PORT, 10):
+            raise RuntimeError("Could not connect to meduza")
+
 
 
     @classmethod
