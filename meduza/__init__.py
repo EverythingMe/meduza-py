@@ -36,7 +36,7 @@ class Session(object):
         self._master = masterConnector
         self._slave = slaveConnector
 
-    def select(self, model, *filters, **kwargs):
+    def select(self, model, filters, **kwargs):
         """
         Select objects based on secondary indexes. The model class is used to construct object instances
         :param model: a model class to create instances from
@@ -54,6 +54,13 @@ class Session(object):
             paging = Paging(0, kwargs['limit'])
         else:
             paging = None
+
+        # Filters can be a list of filters or a single filter
+        try:
+            filters = tuple(filters)
+        except TypeError:
+            filters = (filters,)
+
 
         q = queries.GetQuery(model.tableName(), filters=filters,
                              properties=kwargs.get('properties', tuple()),
@@ -138,13 +145,20 @@ class Session(object):
         return res.ids
 
 
-    def delete(self, model, *filters):
+    def delete(self, model, filters):
         """
         Delete from a model, based on a series of filters
         :param model: a model class. This is just used to extract the table name
         :param filters: a list of filters
         :return: the number of entities deleted
         """
+
+        # Filters can be a list of filters or a single filter
+        try:
+            filters = tuple(filters)
+        except TypeError:
+            filters = (filters,)
+
         q = queries.DelQuery(model.tableName(), *filters)
 
         with self._master() as client:
@@ -156,15 +170,33 @@ class Session(object):
         return res.num
 
 
-    def update(self, model, *filters, **changes):
+    def update(self, model, filters, **changes):
         """
         Update performs an UPDATE query on the model
+        Usage:
+        >> update(Users, Users.name === "John", Users.score += 1, Users.lastUpdate = Timestamp.now())
         :param model: a model class we use to take the table name from
-        :param filters: a list of selection filters to determine which entities to update
-        :param changes: a set of key=value changes to set. e.g. name="Foo"
+        :param filtersAndChanges: a list of selection filters and changes to determine which entities to update
+        :param changes: a set of key=value changes to set. e.g. name="Foo". For incement changes use filtersAndChanges
         :return: the number of updated entities
         """
-        q = queries.UpdateQuery(model.tableName(), *filters, **changes)
+
+        # Filters can be a list of filters or a single filter
+        try:
+            filters = tuple(filters)
+        except TypeError:
+            filters = (filters,)
+
+        changeList = []
+        for k,v in changes.iteritems():
+            if isinstance(v, Change):
+                assert getattr(model, k).name == v.property, "Mismatching property key and name %s" % k
+                changeList.append(v)
+            else:
+                changeList.append(Change.set(getattr(model, k).name, v))
+
+
+        q = queries.UpdateQuery(model.tableName(), filters, *changeList)
 
         with self._master() as client:
             res = client.do(q)
@@ -175,7 +207,7 @@ class Session(object):
         return res.num
 
 
-    def count(self, model, *filters):
+    def count(self, model, filters = None):
         """
         Count the total number of objects matching a set of filters.
         If filters are empty, we inject a filter for counting all objects in this model
@@ -183,8 +215,13 @@ class Session(object):
 
         # Add an ALL filter if no filters are present
         if not filters:
-            filters = [model.all()]
-
+            filters = (model.all(),)
+        else:
+            # Filters can be a list of filters or a single filter
+            try:
+                filters = tuple(filters)
+            except TypeError:
+                filters = (filters,)
         _, num = self.select(model, withTotal=True,  limit=1, *filters)
         return num
 
@@ -204,7 +241,7 @@ def setup(masterConnector = defaultConnector, slaveConnector = defaultConnector)
     _defaultSession = Session(masterConnector, slaveConnector)
 
 
-def select(model, *filters, **kwargs):
+def select(model, filters, **kwargs):
     """
     Select objects based on secondary indexes. The model class is used to construct object instances
 
@@ -219,7 +256,7 @@ def select(model, *filters, **kwargs):
     :return: a list of objects generated from the model class
     """
 
-    return _defaultSession.select(model, *filters, **kwargs)
+    return _defaultSession.select(model, filters, **kwargs)
 
 def get(model, *ids, **kwargs):
     """
@@ -244,25 +281,27 @@ def put(*objects):
     """
     return _defaultSession.put(*objects)
 
-def delete(model, *filters):
+def delete(model, filters):
     """
     Delete from a model, based on a series of filters using the Default Session
     :param model: a model class. This is just used to extract the table name
     :param filters: a list of filters
     :return: the number of entities deleted
     """
-    return _defaultSession.delete(model, *filters)
+    return _defaultSession.delete(model, filters)
 
-def update(model, *filters, **changes):
+def update(model, filters, **changes):
     """
-    Update performs an UPDATE query on the model
+    Update performs an UPDATE query on the model using the default session
+    Usage:
+    >> update(Users, Users.name === "John", Users.score += 1, Users.lastUpdate = Timestamp.now())
     :param model: a model class we use to take the table name from
-    :param filters: a list of selection filters to determine which entities to update
-    :param changes: a set of key=value changes to set. e.g. name="Foo"
+    :param filters: a list of selection filters and changes to determine which entities to update
+    :param setChanges: a set of key=value changes to set. e.g. name="Foo". For incement changes use filtersAndChanges
     :return: the number of updated entities
-    """
-    return _defaultSession.update(model, *filters, **changes)
+"""
+    return _defaultSession.update(model, filters, **changes)
 
-def count(model, *filters):
+def count(model, filters=tuple()):
 
-    return _defaultSession.count(model, *filters)
+    return _defaultSession.count(model, filters)

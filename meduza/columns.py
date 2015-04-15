@@ -1,3 +1,6 @@
+import itertools
+import types
+
 __author__ = 'dvirsky'
 
 import datetime
@@ -8,22 +11,16 @@ from . import queries
 
 class Column(object):
 
-    NoDefault = "%%NDEF%%"
+    Undefined = object()
 
-    def __init__(self, name='', default = NoDefault, required=False, choices = None):
+
+    def __init__(self, name='', default = Undefined, required=False, choices = None):
 
         self.name = name
-
         self.primary = False
         self.required = bool(required)
-        self.hasDefault = False
-        self._default = None
+        self._default = default
         self.modelName = name
-
-        if default != Column.NoDefault:
-
-            self._default = default
-            self.hasDefault = True
 
         self._choices = set(choices) if choices is not None else None
 
@@ -48,13 +45,30 @@ class Column(object):
 
         return self.toFilter(queries.Condition.EQ, other)
 
-    def __gt__(self, other):
+    def __add__(self, other):
+        """
+        Override += to allow syntactic sugar for update queries using INCREMENT
+        """
+        return self.increment(other)
 
-        return self.toFilter(queries.Condition.GT, other)
+    def increment(self, other):
+        """
+        Create an increment update change
+        """
+        if not isinstance(other, (int, float, long)):
+            raise ValueError("Invalid type for increment: %s", type(other))
 
-    def IN(self, *other):
+        return queries.Change(self.name, queries.Change.Increment, other)
+
+    def any(self, *other):
         return self.toFilter(queries.Condition.IN, other)
 
+    equals = __eq__
+
+
+    def between(self, min, max):
+
+        raise NotImplementedError
 
 
     def validateChoices(self, data):
@@ -237,7 +251,7 @@ class Set(Column):
 
     IDENT = '__MDZS__'
 
-    def __init__(self, name, type=None, default = Column.NoDefault):
+    def __init__(self, name, type=None, default = Column.Undefined):
 
 
         Column.__init__(self, name, default=default)
@@ -274,7 +288,7 @@ class List(Column):
 
     IDENT = '__MDZL__'
 
-    def __init__(self, name, type=None, default = Column.NoDefault):
+    def __init__(self, name, type=None, default = Column.Undefined):
 
 
         Column.__init__(self, name, default=default)
@@ -311,7 +325,7 @@ class Map(Column):
     Representing a list column
     """
 
-    def __init__(self, name, type=None, default = Column.NoDefault):
+    def __init__(self, name, type=None, default = Column.Undefined):
 
 
         Column.__init__(self, name, default=default)

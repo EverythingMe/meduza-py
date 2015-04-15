@@ -41,6 +41,8 @@ tables:
             wat:
                 type: Text
                 clientName: fancySuperLongNameWatWat
+            score:
+                type: Int
 
             mapr:
                 type: Map
@@ -51,8 +53,8 @@ tables:
                 columns: [name,email]
 """
 
-class User(meduza.Model):
 
+class User(meduza.Model):
     _table = "Users"
     _schema = "pytest"
 
@@ -66,12 +68,15 @@ class User(meduza.Model):
 
     mapr = Map("mapr", type=Text())
 
+    score = Int("score", default=0)
+
+
 import subprocess
 import time
 import os
 import sys
 
-PORT = 9975
+PORT = 9977
 
 
 def waitPort(host, port, timeout=5.0):
@@ -85,8 +90,8 @@ def waitPort(host, port, timeout=5.0):
     st = time.time()
     while st + 10 > time.time():
         try:
-            sock = socket.create_connection((host,port), timeout=timeout)
-        except socket.error:
+            sock = socket.create_connection((host, port), timeout=timeout)
+        except socket.error as e:
             continue
         else:
             sock.close()
@@ -96,8 +101,6 @@ def waitPort(host, port, timeout=5.0):
 
 
 class MeduzaTest(TestCase):
-
-
     @classmethod
     def runMeduza(cls):
 
@@ -107,20 +110,19 @@ class MeduzaTest(TestCase):
 
         if not waitPort("localhost", PORT, 10):
             raise RuntimeError("Could not connect to meduza")
-
+        print "Started meduza!"
 
 
     @classmethod
     def installSchema(cls):
 
-        #curl -i -X POST  -H "Content-Type: text/yaml" http://localhost:9966/deploy?name=foo --data-binary "@./evme.schema.yaml"
+        # curl -i -X POST  -H "Content-Type: text/yaml" http://localhost:9966/deploy?name=foo --data-binary "@./evme.schema.yaml"
         deployUrl = "http://localhost:9966/deploy?name=testung"
 
         res = requests.post(deployUrl, schema, headers={"Content-Type": "text/yaml"})
 
         if res.status_code != 200 or res.content != 'OK':
             cls.fail("Failed deploying schema: %s" % res)
-
 
 
     @classmethod
@@ -139,34 +141,29 @@ class MeduzaTest(TestCase):
         meduza.setup(provider, provider)
 
 
-
     @classmethod
     def tearDownClass(cls):
-        pass
         if cls.mdz is not None:
             cls.mdz.send_signal(signal.SIGTERM)
 
-        #cls.mdz.terminate()
 
     def setUp(self):
         self.users = []
-        self.ids =[]
+        self.ids = []
         for i in xrange(10):
-
-            u = User(name = "user %d" % i, email = "user%d@domain.com" % i,
-                     groups = set(("g%d" % x for x in xrange(i, i+3))),
-                     fancySuperLongNameWatWat = "watwat",
-                     mapr = {"foo": "bar"},
-                     )
+            u = User(name="user %d" % i, email="user%d@domain.com" % i,
+                     groups=set(("g%d" % x for x in xrange(i, i + 3))),
+                     fancySuperLongNameWatWat="watwat",
+                     mapr={"foo": "bar"},
+            )
             self.users.append(u)
 
         self.ids = meduza.put(*self.users)
 
 
-
     def tearDown(self):
 
-        meduza.delete(User, User.id.IN(*[u.id for u in self.users]))
+        meduza.delete(User, User.id.any(*[u.id for u in self.users]))
 
 
     def testPut(self):
@@ -174,7 +171,7 @@ class MeduzaTest(TestCase):
         self.assertEqual(len(self.ids), len(self.users))
         for i, u in enumerate(self.users):
             self.assertNotEqual(u.id, "")
-            self.assertEqual(self.ids[i],u.id)
+            self.assertEqual(self.ids[i], u.id)
 
 
     def testGet(self):
@@ -191,11 +188,10 @@ class MeduzaTest(TestCase):
             self.assertEqual(u.fancySuperLongNameWatWat, users[i].fancySuperLongNameWatWat)
 
 
-
     def testSelect(self):
 
         u = self.users[0]
-        users = meduza.select(User, User.name == u.name,  User.email == u.email)
+        users = meduza.select(User, User.name.equals(u.name) & User.email.equals(u.email))
 
         self.assertEqual(len(users), 1)
 
@@ -207,12 +203,12 @@ class MeduzaTest(TestCase):
         self.assertEquals(u.groups, u2.groups)
 
         # select an impossible value
-        users = meduza.select(User, User.name==u.name,  User.email=="not user 1's email")
+        users = meduza.select(User, User.name.equals(u.name) & (User.email == "not user 1's email"))
         self.assertEquals(len(users), 0)
 
 
         # select by a partial key
-        users = meduza.select(User, User.name==u.name)
+        users = meduza.select(User, User.name == u.name)
         self.assertEqual(len(users), 1)
 
         u2 = users[0]
@@ -223,7 +219,7 @@ class MeduzaTest(TestCase):
         self.assertEquals(u.groups, u2.groups)
 
 
-        #test select ALL
+        # test select ALL
         users = meduza.select(User, User.all(), order=Ordering.asc('id'))
         self.assertEqual(len(users), len(self.users))
 
@@ -243,32 +239,53 @@ class MeduzaTest(TestCase):
 
     def testDelete(self):
 
-        n = meduza.delete(User, User.id.IN(*[u.id for u in self.users]))
+        n = meduza.delete(User, User.id.any(*[u.id for u in self.users]))
         self.assertEquals(n, len(self.users))
-        users =  meduza.select(User, User.id.IN(*[u.id for u in self.users]))
+        users = meduza.select(User, User.id.any(*[u.id for u in self.users]))
 
         self.assertEqual(0, len(users))
+
+
+    def testModelMagic(self):
+
+        u = self.users[0]
+
+
+        # Make sure that if update includes an increment statement where the key is not the same as the
+        # the column being updated (we only allow score=User.score+1
+        with self.assertRaises(AssertionError):
+            meduza.update(User, User.name.equals(u.name) & User.email.equals(u.email),
+                          name=User.score + 3)
+
+        print meduza.update(User, User.name.equals(u.name) & User.email.equals(u.email),
+                          fancySuperLongNameWatWat=User.fancySuperLongNameWatWat + 3)
+
+        u = User(name ="baba")
+        # Test that missing object attributes that are columns do not return the column class
+        with self.assertRaises(AttributeError):
+            u.fancySuperLongNameWatWat
 
 
     def testUpdate(self):
 
         u = self.users[0]
-        n = meduza.update(User, User.name==u.name,  User.email==u.email, name="baba")
+        n = meduza.update(User, User.name.equals(u.name) & User.email.equals(u.email),
+                          name="baba", score=User.score + 3)
 
         self.assertEquals(n, 1)
 
-        users = meduza.select(User, User.name=="baba",  User.email==u.email)
+        users = meduza.select(User, (User.name == "baba") & (User.email == u.email))
         self.assertEqual(len(users), 1)
         self.assertEqual(users[0].id, u.id)
+        self.assertEqual(users[0].score, u.score + 3)
 
-        users = meduza.select(User, User.name==u.name,  User.email==u.email)
+        users = meduza.select(User, (User.name == u.name) & (User.email == u.email))
         self.assertEqual(len(users), 0)
 
 
     def testPing(self):
 
         with meduza.customConnector('localhost', PORT)() as client:
-
             ret = client.do(PingQuery())
             self.assertIsNotNone(ret)
 

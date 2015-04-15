@@ -248,9 +248,6 @@ class RedisClient(object):
         :return: a response object
         """
 
-
-
-
         self.send(query)
 
         return self.receive()

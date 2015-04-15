@@ -4,4 +4,7 @@
 ,pypy
 *.pyc
 *.pyo
-
+/build
+/dist
+tests_output/
+*.egg-info

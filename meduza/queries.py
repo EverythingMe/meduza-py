@@ -70,6 +70,13 @@ class Filter(object):
     def __repr__(self):
         return "Filter{%s %s %s}" % (self.property, self.op, self.values)
 
+    def __and__(self, other):
+
+        if isinstance(other, (list, tuple)):
+            return (self,) + other
+
+        return tuple((self, other))
+
 class Ordering(object):
     """
     Representing the sort order of a query
@@ -224,7 +231,7 @@ class PutResponse(Response):
     def __init__(self, **kwargs):
 
         Response.__init__(self, **kwargs['Response'])
-        self.ids = map(str, kwargs.get('ids', []))
+        self.ids = kwargs.get('ids', [])
 
 
     def __repr__(self):
@@ -267,7 +274,7 @@ class Change(object):
 
 
     def __init__(self, property, op, value):
-        if op != self.Set:
+        if op not in (self.Set, self.Increment):
             raise ValueError("op %s not supported", op)
 
         self.property = property
@@ -287,13 +294,11 @@ class UpdateQuery(object):
     """
     DelQuery sets filters telling the server what objects to delete. It returns the number of objects deleted
     """
-    def __init__(self, table, *filters, **values):
+    def __init__(self, table,  filters, *changes):
 
         self.table = table
         self.filters = Filters(*filters)
-        self.changes = []
-        for k,v in values.iteritems():
-           self.set(k, v)
+        self.changes = changes
 
     def filter(self, prop, operator, *values):
         """

@@ -43,9 +43,36 @@ class Model(object):
 
         self.__dict__.update(kwargs)
 
+
         # If the object doesn't have a primary value, put none
         if not self.__dict__.has_key(self.primary()):
             self.setPrimary(None)
+
+
+
+        primary = self.primary()
+        # Set the default v
+        for k, col in self.columns().iteritems():
+
+            if k == primary:
+                continue
+            if col.modelName not in self.__dict__:
+                default = col.default()
+                if default is not Column.Undefined:
+                    setattr(self, col.modelName, default)
+
+    def __getattribute__(self, item):
+
+
+
+        #cols =  object.__getattribute__(self, 'columns')()
+        ret = object.__getattribute__(self, item)
+
+        if isinstance(ret, Column):
+            raise AttributeError("'%s' object has no attribute '%s'" %(self.__class__.__name__, item))
+        return ret
+
+
 
     @classmethod
     def all(cls):
@@ -146,11 +173,10 @@ class Model(object):
             if not self.__dict__.has_key(col.modelName):
                 if col.required:
                     raise ColumnValueError("Required column %s not set in %s" %(col.name, self._table))
-
-                if not col.hasDefault:
+                else:
                     continue
 
-            data = self.__dict__.get(col.modelName) or col.default()
+            data = self.__dict__.get(col.modelName)
             #print k, data
             #col.validateChoices(data)
             ent.properties[k] = col.encode(data)
