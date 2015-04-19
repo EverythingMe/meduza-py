@@ -49,7 +49,6 @@ class Response(object):
     The base class for all responses. Includes the query processing time on the server, and the error returned from it
     """
     def __init__(self, **kwargs):
-
         self.error = kwargs.get('error', None)
         self.time = kwargs.get('time', )
 
@@ -178,8 +177,7 @@ class GetResponse(Response):
     GetResponse is a response to a Get query, with the selected entities embedded in it
     """
     def __init__(self, **kwargs):
-
-        Response.__init__(self, **kwargs)
+        Response.__init__(self, **kwargs['Response'])
 
         self.entities = [Entity(e['id'], **e['properties']) for e in kwargs.get('entities', [])]
         self.total = kwargs.get('total', 0)
