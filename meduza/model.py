@@ -16,22 +16,30 @@ class ModelType(type):
     Meta class for models, it injects the member name in a model of fields into the columns
     """
     def __new__(mcs, name, bases, dct):
+        # Copy all of the base Models columns into our subclass columns
         columns = {k: v for base in bases if isinstance(base, ModelType) for k, v in base.__columns__.iteritems()}
-
-        dct['__columns__'] = columns
-        primary = None
 
         for k, v in dct.iteritems():
             if isinstance(v, Column):
+                # Assign the modelName to the Column and register the column name in the columns dict
+                # Example:
+                # class MyModel(Model):
+                #     clientFriendlyName = Int('serverName')
+                #
+                # Here the Int object's modelName will be populated with 'clientFriendlyName'
+                # The columns are indexed by the server name ('serverName' in this example)
                 v.modelName = k
                 columns[v.name] = v
 
+        dct['__columns__'] = columns
+
         for k, v in columns.iteritems():
             if v.primary:
-                primary = k
+                dct['__primary__'] = k
+                break
+        else:
+            raise RuntimeError('Model {} has no primary key'.format(name))
 
-        assert primary is not None
-        dct['__primary__'] = primary
         return type.__new__(mcs, name, bases, dct)
 
 
