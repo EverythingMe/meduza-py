@@ -1,7 +1,8 @@
-from contextlib import contextmanager
 import logging
 import signal
-import socket
+
+from meduza.testing import DisposableMeduza
+
 
 __author__ = 'dvirsky'
 
@@ -14,10 +15,9 @@ except ImportError:
         import json
 
 import meduza
-from meduza.columns import Text, Timestamp, Key, Set, Float, Int, List, Map
+from meduza.columns import Text, Timestamp, Set, Int, Map
 from meduza.queries import Ordering, PingQuery
 from unittest import TestCase
-import requests
 
 
 schema = """
@@ -71,80 +71,30 @@ class User(meduza.Model):
     score = Int("score", default=0)
 
 
-import subprocess
-import time
 import os
 import sys
-
-PORT = 9977
-
-
-def waitPort(host, port, timeout=5.0):
-    """
-    Wait until a socket becomes available for accepting connections
-    :param host:
-    :param port:
-    :param timeout:
-    :return:
-    """
-    st = time.time()
-    while st + 10 > time.time():
-        try:
-            sock = socket.create_connection((host, port), timeout=timeout)
-        except socket.error as e:
-            continue
-        else:
-            sock.close()
-            return True
-
-    return False
 
 
 class MeduzaE2ETestCase(TestCase):
     @classmethod
-    def runMeduza(cls):
-        meduzad = os.getenv('MEDUZA_BIN', os.path.join(os.path.dirname(__file__), '..', 'run_mdz_docker.sh'))
-
-        cls.mdz = subprocess.Popen((meduzad, '-test', '-port=%d' % PORT), stdout=sys.stdout, stderr=sys.stderr)
-
-        if not waitPort("localhost", PORT, 10):
-            raise RuntimeError("Could not connect to meduza")
-        print "Started meduza!"
-
-
-    @classmethod
-    def installSchema(cls):
-
-        # curl -i -X POST  -H "Content-Type: text/yaml" http://localhost:9966/deploy?name=foo --data-binary "@./evme.schema.yaml"
-        deployUrl = "http://localhost:9966/deploy?name=testung"
-
-        res = requests.post(deployUrl, schema, headers={"Content-Type": "text/yaml"})
-
-        if res.status_code != 200 or res.content != 'OK':
-            cls.fail("Failed deploying schema: %s" % res)
-
-
-    @classmethod
     def setUpClass(cls):
-
-        cls.runMeduza()
+        cls.mdz = DisposableMeduza(os.getenv('MEDUZA_BIN', os.path.join(os.path.dirname(__file__), '..', 'run_mdz_docker.sh')))
+        cls.mdz.start()
 
         try:
-            cls.installSchema()
+            cls.mdz.installSchema(schema)
         except Exception:
-            logging.exception("Failed installig schema")
+            logging.exception("Failed installing schema")
             cls.tearDownClass()
             sys.exit(-1)
 
-        provider = meduza.customConnector('localhost', PORT)
+        provider = meduza.customConnector('localhost', cls.mdz.port)
         meduza.setup(provider, provider)
-
 
     @classmethod
     def tearDownClass(cls):
         if cls.mdz is not None:
-            cls.mdz.send_signal(signal.SIGTERM)
-
+            cls.mdz.stop()
 
     def setUp(self):
         self.users = []
@@ -284,7 +234,7 @@ class MeduzaE2ETestCase(TestCase):
 
     def testPing(self):
 
-        with meduza.customConnector('localhost', PORT)() as client:
+        with meduza.customConnector('localhost', self.mdz.port)() as client:
             ret = client.do(PingQuery())
             self.assertIsNotNone(ret)
 
