@@ -83,9 +83,13 @@ class DisposableMeduza(object):
         shutil.rmtree(self.tempDir, ignore_errors=True)
 
     def installSchema(self, schema):
-        deployUrl = 'http://localhost:{}/deploy'.format(self.ctlPort)
+        installSchema(schema, self.ctlPort)
 
-        res = requests.post(deployUrl, schema, headers={"Content-Type": "text/yaml"})
 
-        if res.status_code != 200 or res.content != 'OK':
-            raise RuntimeError('Failed to install schema')
+def installSchema(schema, port=9966):
+    deployUrl = 'http://localhost:{}/deploy'.format(port)
+
+    res = requests.post(deployUrl, schema, headers={"Content-Type": "text/yaml"})
+
+    if res.status_code != 200 or res.content != 'OK':
+        raise RuntimeError('Failed to install schema')
