@@ -103,8 +103,7 @@ def waitPort(host, port, timeout=5.0):
 class MeduzaTest(TestCase):
     @classmethod
     def runMeduza(cls):
-
-        meduzad = os.getenv('MEDUZA_BIN', '../run_mdz_docker.sh')
+        meduzad = os.getenv('MEDUZA_BIN', os.path.join(os.path.dirname(__file__), '..', 'run_mdz_docker.sh'))
 
         cls.mdz = subprocess.Popen((meduzad, '-test', '-port=%d' % PORT), stdout=sys.stdout, stderr=sys.stderr)
 

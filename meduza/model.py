@@ -2,7 +2,6 @@ from meduza.errors import ColumnValueError
 
 __author__ = 'dvirsky'
 
-
 import logging
 
 from .columns import Column, Key
@@ -12,48 +11,49 @@ from .queries import Filter, Condition, Entity
 ID = "id"
 
 
-
 class ModelType(type):
     """
     Meta class for models, it injects the member name in a model of fields into the columns
     """
-    @staticmethod
-    def __new__(cls, name, bases, dict):
-        for k, v in dict.iteritems():
+    def __new__(mcs, name, bases, dct):
+        columns = {k: v for base in bases if isinstance(base, ModelType) for k, v in base.__columns__.iteritems()}
+
+        dct['__columns__'] = columns
+        primary = None
+
+        for k, v in dct.iteritems():
             if isinstance(v, Column):
                 v.modelName = k
+                columns[v.name] = v
 
-        return type.__new__(cls, name, bases, dict)
+        for k, v in columns.iteritems():
+            if v.primary:
+                primary = k
+
+        assert primary is not None
+        dct['__primary__'] = primary
+        return type.__new__(mcs, name, bases, dct)
 
 
 class Model(object):
-
     __metaclass__ = ModelType
-
 
     _table = None
     _schema = None
-    _columns = dict()
-    _primary = ID
+    __columns__ = None
 
     id = Key(ID)
 
     def __init__(self, **kwargs):
-
-
         self.__dict__.update(kwargs)
 
-
         # If the object doesn't have a primary value, put none
-        if not self.__dict__.has_key(self.primary()):
+        if self.__primary__ not in self.__dict__:
             self.setPrimary(None)
 
-
-
-        primary = self.primary()
+        primary = self.__primary__
         # Set the default v
-        for k, col in self.columns().iteritems():
-
+        for k, col in self.__columns__.iteritems():
             if k == primary:
                 continue
             if col.modelName not in self.__dict__:
@@ -62,22 +62,15 @@ class Model(object):
                     setattr(self, col.modelName, default)
 
     def __getattribute__(self, item):
-
-
-
-        #cols =  object.__getattribute__(self, 'columns')()
         ret = object.__getattribute__(self, item)
 
         if isinstance(ret, Column):
-            raise AttributeError("'%s' object has no attribute '%s'" %(self.__class__.__name__, item))
+            raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__.__name__, item))
         return ret
-
-
 
     @classmethod
     def all(cls):
-
-        return Filter(cls.primary(), Condition.ALL)
+        return Filter(cls.__primary__, Condition.ALL)
 
     @classmethod
     def primary(cls):
@@ -85,45 +78,7 @@ class Model(object):
         Return the class' attribute name for the primary key (usually "id")
         :return:
         """
-
-        # make sure we precache the columns and primary
-        if cls._primary is None:
-            cls.columns()
-
-        return cls._primary
-
-    @classmethod
-    def columns(cls):
-        """
-        Return a map of the columns of the class by their *client* names, not class names
-        :return:
-        """
-
-
-        if not cls._columns:
-            columns = {}
-            primary = None
-
-            for  k,v in cls.__dict__.iteritems():
-                if  isinstance(v, Column):
-                    columns[v.name] = v
-
-                    if v.primary:
-                        primary = k
-
-            if primary is not None:
-                cls._primary = primary
-            else:
-                columns[Model._primary] = getattr(Model, Model._primary)
-
-            if cls != Model:
-                cls._columns = columns
-                cls._columns.update(Model.columns())
-            return columns
-        else:
-            return cls._columns
-
-
+        return cls.__primary__
 
     @classmethod
     def decode(cls, entity):
@@ -132,14 +87,14 @@ class Model(object):
         :param entity: an entity
         :return:
         """
-        cols = cls.columns()
+        cols = cls.__columns__
 
         obj = object.__new__(cls)
         obj.setPrimary(entity.id)
 
-        for k,v in entity.properties.iteritems():
+        for k, v in entity.properties.iteritems():
 
-            if  k == cls.primary():
+            if k == cls.__primary__:
                 continue
 
             col = cols.get(k)
@@ -151,15 +106,14 @@ class Model(object):
 
         return obj
 
-
     def encode(self):
         """
         Encode an object from the model into an entity for wire transmission
         :return:
         """
 
-        cols = self.columns()
-        primary = self.primary()
+        cols = self.__columns__
+        primary = self.__primary__
         pcol = cols[primary]
 
         ent = Entity(pcol.encode(getattr(self, primary)))
@@ -167,22 +121,20 @@ class Model(object):
         for k, col in cols.iteritems():
 
             if k == primary:
-
                 continue
 
-            if not self.__dict__.has_key(col.modelName):
+            if col.modelName not in self.__dict__:
                 if col.required:
-                    raise ColumnValueError("Required column %s not set in %s" %(col.name, self._table))
+                    raise ColumnValueError("Required column %s not set in %s" % (col.name, self._table))
                 else:
                     continue
 
             data = self.__dict__.get(col.modelName)
-            #print k, data
-            #col.validateChoices(data)
+            # print k, data
+            # col.validateChoices(data)
             ent.properties[k] = col.encode(data)
 
         return ent
-
 
     @classmethod
     def tableName(cls):
@@ -194,9 +146,7 @@ class Model(object):
         return '%s.%s' % (cls._schema, cls._table)
 
     def __repr__(self):
-
-        return '%s<%s> %s' %(self._table, getattr(self, self._primary), self.__dict__)
-
+        return '%s<%s> %s' % (self._table, getattr(self, self.__primary__), self.__dict__)
 
     def setPrimary(self, val):
         """
@@ -204,7 +154,6 @@ class Model(object):
         :param val: the value
         :return:
         """
-        pcol = self.columns()[self.primary()]
+        pcol = self.__columns__[self.__primary__]
 
-        setattr(self, self.primary(), pcol.decode(val))
-
+        setattr(self, self.__primary__, pcol.decode(val))
