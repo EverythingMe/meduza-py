@@ -100,7 +100,7 @@ def waitPort(host, port, timeout=5.0):
     return False
 
 
-class MeduzaTest(TestCase):
+class MeduzaE2ETestCase(TestCase):
     @classmethod
     def runMeduza(cls):
         meduzad = os.getenv('MEDUZA_BIN', os.path.join(os.path.dirname(__file__), '..', 'run_mdz_docker.sh'))
@@ -291,3 +291,15 @@ class MeduzaTest(TestCase):
             self.assertIsNone(ret.error)
 
 
+class ModelEncodeDecodeTestCase(TestCase):
+    def testEncodeModel(self):
+        u = User(name="user", email="user@domain.com",
+                 groups=set(("g%d" % x for x in xrange(0, 3))),
+                 fancySuperLongNameWatWat="watwat",
+                 mapr={"foo": "bar"},
+                 )
+
+        entity = u.encode()
+        self.assertEqual(entity.properties['wat'], u.fancySuperLongNameWatWat)
+        u2 = User.decode(entity)
+        self.assertEqual(u.__dict__, u2.__dict__)

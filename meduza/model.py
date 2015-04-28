@@ -133,7 +133,7 @@ class Model(object):
 
             if col.modelName not in self.__dict__:
                 if col.required:
-                    raise ColumnValueError("Required column %s not set in %s" % (col.name, self._table))
+                    raise ColumnValueError("Required column %s not set in %s" % (col.modelName, self._table))
                 else:
                     continue
 
