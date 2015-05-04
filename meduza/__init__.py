@@ -48,6 +48,7 @@ class Session(object):
             * limit - same as paging but start=0
         :return: a list of objects generated from the model class
         """
+
         if 'paging' in kwargs:
             paging = kwargs['paging']
         elif 'limit' in kwargs:

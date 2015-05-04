@@ -98,7 +98,7 @@ class Paging(object):
     """
     Paging represents the paging limitations of a selection query
     """
-    def __init__(self, offset=0, limit=10):
+    def __init__(self, offset=0, limit=100):
         self.offset = offset
         self.limit = limit
 

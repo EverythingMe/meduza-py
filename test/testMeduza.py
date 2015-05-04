@@ -99,8 +99,8 @@ class MeduzaE2ETestCase(TestCase):
     def setUp(self):
         self.users = []
         self.ids = []
-        for i in xrange(10):
-            u = User(name="user %d" % i, email="user%d@domain.com" % i,
+        for i in xrange(20):
+            u = User(name="user %02d" % i, email="user%02d@domain.com" % i,
                      groups=set(("g%d" % x for x in xrange(i, i + 3))),
                      fancySuperLongNameWatWat="watwat",
                      mapr={"foo": "bar"},
@@ -169,7 +169,7 @@ class MeduzaE2ETestCase(TestCase):
 
 
         # test select ALL
-        users = meduza.select(User, User.all(), order=Ordering.asc('id'))
+        users = meduza.select(User, User.all(), order=Ordering.asc('id'), limit=len(self.users))
         self.assertEqual(len(users), len(self.users))
 
         for i, u in enumerate(self.users):
@@ -190,7 +190,7 @@ class MeduzaE2ETestCase(TestCase):
 
         n = meduza.delete(User, User.id.any(*[u.id for u in self.users]))
         self.assertEquals(n, len(self.users))
-        users = meduza.select(User, User.id.any(*[u.id for u in self.users]))
+        users = meduza.get(User, *[u.id for u in self.users])
 
         self.assertEqual(0, len(users))
 
