@@ -92,7 +92,7 @@ class Session(object):
             if not isinstance(id, basestring):
                 raise MeduzaError("Invalid id type: %s", type(id))
 
-        q = queries.GetQuery(model.tableName()).filter(model.__primary__, Condition.IN, *ids)
+        q = queries.GetQuery(model.tableName()).filter(model.__primary__, Condition.IN, *ids).limit(len(ids))
 
         with self._slave() as client:
             res = client.do(q)

@@ -51,6 +51,7 @@ class DisposableMeduza(object):
         self.ctlPort = None
         self.tempDir = None
         self.meduzaExecutable = meduzaExecutable or os.getenv('MEDUZA_BIN')
+        print self.meduzaExecutable
         assert self.meduzaExecutable, 'No meduzaExecutable param found and MEDUZA_BIN env variable is not set'
 
     def start(self, connectTimeout=DEFAULT_CONNECT_TIMEOUT):
@@ -68,7 +69,7 @@ class DisposableMeduza(object):
         with open(configfile, 'w') as f:
             yaml.dump(config, f)
 
-        self.mdz = subprocess.Popen((self.meduzaExecutable, '-conf', configfile), stderr=subprocess.PIPE)
+        self.mdz = subprocess.Popen((self.meduzaExecutable, '-test', '-conf', configfile), stderr=subprocess.PIPE)
         while True:
             out = self.mdz.stderr.readline().strip()
             if 'main.serverConfig' in out:
