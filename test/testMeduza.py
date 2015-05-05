@@ -1,5 +1,6 @@
 import logging
 import signal
+import time
 
 from meduza.testing import DisposableMeduza
 
@@ -16,7 +17,7 @@ except ImportError:
 
 import meduza
 from meduza.columns import Text, Timestamp, Set, Int, Map
-from meduza.queries import Ordering, PingQuery
+from meduza.queries import Ordering, PingQuery, Change
 from unittest import TestCase
 
 
@@ -110,6 +111,7 @@ class MeduzaE2ETestCase(TestCase):
         self.ids = meduza.put(*self.users)
 
 
+
     def tearDown(self):
 
         meduza.delete(User, User.id.any(*[u.id for u in self.users]))
@@ -121,6 +123,29 @@ class MeduzaE2ETestCase(TestCase):
         for i, u in enumerate(self.users):
             self.assertNotEqual(u.id, "")
             self.assertEqual(self.ids[i], u.id)
+
+    def testExpire(self):
+
+        u = User(name="expi mcxpire", email="Expiry@domain.com")
+        ids = meduza.putExpiring(0.1, u)
+        self.assertGreater(len(ids), 0)
+        us = meduza.get(User,ids[0])
+        self.assertGreater(len(us), 0)
+        self.assertEqual(us[0].id, u.id)
+
+        time.sleep(0.15)
+        us = meduza.get(User, ids[0])
+        self.assertEqual(len(us), 0)
+
+        us = meduza.select(User, User.all(), limit=len(self.users))
+        self.assertGreater(len(us), 0)
+
+        meduza.update(User, [User.id.any(*[u.id for u in self.users])], _=Change.expire(0.1))
+        time.sleep(0.15)
+        us = meduza.select(User, User.all(), limit=len(self.users))
+        self.assertEqual(len(us), 0)
+
+
 
 
     def testGet(self):
@@ -169,7 +194,7 @@ class MeduzaE2ETestCase(TestCase):
 
 
         # test select ALL
-        users = meduza.select(User, User.all(), order=Ordering.asc('id'), limit=len(self.users))
+        users = meduza.select(User, User.all(), order=Ordering.asc('id'), limit=len(self.users)+1)
         self.assertEqual(len(users), len(self.users))
 
         for i, u in enumerate(self.users):

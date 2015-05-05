@@ -9,7 +9,8 @@ without knowing what you're doing and modifying the server code accordingly.
 
 ** * * /WARNING * * **
 """
-
+import time
+import datetime
 
 
 class Condition(object):
@@ -23,7 +24,8 @@ class Condition(object):
     LT = "<"
     ALL = "ALL"
 
-
+def nanoseconds(seconds):
+    return long(seconds * 1000000000)
 
 class Entity(object):
     """
@@ -37,11 +39,17 @@ class Entity(object):
 
         self.id = _key
         self.properties = properties
+        self.ttl = 0
 
     def __repr__(self):
 
         return 'Entity<%s>: %s' % (self.id, self.properties)
 
+    def expire(self, seconds):
+
+        if seconds > 0:
+            # convert the TTL to nanoseconds, which is how go serializes time durations
+            self.ttl = nanoseconds(seconds)
 
 
 class Response(object):
@@ -269,10 +277,11 @@ class Change(object):
     SetDel     = "SDEL"
     MapSet     = "MSET"
     MapDel     = "MDEL"
+    Expire     = "EXP"
 
 
     def __init__(self, property, op, value):
-        if op not in (self.Set, self.Increment):
+        if op not in (self.Set, self.Increment, self.Expire):
             raise ValueError("op %s not supported", op)
 
         self.property = property
@@ -286,6 +295,11 @@ class Change(object):
         """
 
         return Change(prop, cls.Set, val)
+
+    @classmethod
+    def expire(cls, seconds):
+
+        return Change("", cls.Expire, nanoseconds(seconds))
 
 
 class UpdateQuery(object):
@@ -318,6 +332,11 @@ class UpdateQuery(object):
         :return: the update query object itself
         """
         self.changes.append(Change.set(prop, val))
+        return self
+
+    def expire(self, seconds):
+
+        self.changes.append(Change.expire(seconds))
         return self
 
 class UpdateResponse(Response):

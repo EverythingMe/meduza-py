@@ -108,16 +108,19 @@ class Session(object):
             return objs
 
 
-    def put(self, *objects):
+    def putExpiring(self, ttl, *objects):
         """
-        Put a bunch of model objects into meduza.
+        Put a bunch of model objects into meduza with a TTL expiration in seconds
         If the objects have an id set, it is respected by the server. If not, a new id is generated and the objects
         are filled with their respective ids automatically.
 
         NOTE: All objects must be of the same model class
         :param objects: a list of model objects of the same class
+        :param ttl: an integer or float number of seconds for the objects put to live,
+                    after which they'll be expired. applied only when ttl>0
         :return: the ids resulting from putting the objects into meduza
         """
+
         q = queries.PutQuery(objects[0].tableName())
 
         cls = None
@@ -131,7 +134,10 @@ class Session(object):
             if not isinstance(obj, Model):
                 raise ModelError("Non model object found")
 
-            q.add(obj.encode())
+            ent = obj.encode()
+            if ttl > 0:
+                ent.expire(ttl)
+            q.add(ent)
 
         with self._master() as client:
             res = client.do(q)
@@ -145,6 +151,18 @@ class Session(object):
 
         return res.ids
 
+    def put(self, *objects):
+        """
+        Put a bunch of model objects into meduza.
+        If the objects have an id set, it is respected by the server. If not, a new id is generated and the objects
+        are filled with their respective ids automatically.
+
+        NOTE: All objects must be of the same model class
+        :param objects: a list of model objects of the same class
+        :return: the ids resulting from putting the objects into meduza
+        """
+
+        return self.putExpiring(-1, *objects)
 
     def delete(self, model, filters):
         """
@@ -191,7 +209,8 @@ class Session(object):
         changeList = []
         for k,v in changes.iteritems():
             if isinstance(v, Change):
-                assert getattr(model, k).name == v.property, "Mismatching property key and name %s" % k
+                if k != "_":
+                    assert getattr(model, k).name == v.property, "Mismatching property key and name %s" % k
                 changeList.append(v)
             else:
                 changeList.append(Change.set(getattr(model, k).name, v))
@@ -281,6 +300,21 @@ def put(*objects):
     :return: the ids resulting from putting the objects into meduza
     """
     return _defaultSession.put(*objects)
+
+def putExpiring(ttl, *objects):
+    """
+    Put a bunch of model objects into meduza with a TTL expiration in seconds
+    If the objects have an id set, it is respected by the server. If not, a new id is generated and the objects
+    are filled with their respective ids automatically.
+
+    NOTE: All objects must be of the same model class
+    :param objects: a list of model objects of the same class
+    :param ttl: an integer or float number of seconds for the objects put to live,
+                after which they'll be expired. applied only when ttl>0
+    :return: the ids resulting from putting the objects into meduza
+    """
+    return _defaultSession.putExpiring(ttl, *objects)
+
 
 def delete(model, filters):
     """
