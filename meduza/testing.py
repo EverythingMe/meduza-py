@@ -62,7 +62,7 @@ class DisposableMeduza(object):
         config = {
             'server': {
                 'listen': ':{}'.format(self.port),
-                'ctl_list': ':{}'.format(self.ctlPort)
+                'ctl_listen': ':{}'.format(self.ctlPort)
             }
         }
         configfile = os.path.join(self.tempDir, 'meduza.conf')
