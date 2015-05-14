@@ -89,10 +89,11 @@ class Model(object):
         return cls.__primary__
 
     @classmethod
-    def decode(cls, entity):
+    def decode(cls, entity, strict=True):
         """
         Decode an entity into the model's class using the column spec
         :param entity: an entity
+        :param strict: strict decoding mode - altering of object fields not in the model's schema
         :return:
         """
         cols = cls.__columns__
@@ -107,7 +108,8 @@ class Model(object):
 
             col = cols.get(k)
             if not col:
-                logging.warn("Could not map %s to object - not in model", k)
+                if strict:
+                    logging.warn("Could not map %s to object - not in model", k)
                 continue
 
             setattr(obj, col.modelName, col.decode(v))
