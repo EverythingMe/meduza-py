@@ -14,5 +14,5 @@ setup(
     author_email='dvir@everything.me',
     url='https://gitlab.doit9.com/backend/meduza-py',
     packages=find_packages(),
-    install_requires=['redis>=2.10', 'pymongo>=2.8','hiredis>=0.1.6', 'pyyaml', 'requests>=2.6'],
+    install_requires=['redis>=2.10', 'pymongo>=2.8','hiredis>=0.1.6', 'pyyaml', 'requests'],
 )
