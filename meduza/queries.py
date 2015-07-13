@@ -278,10 +278,12 @@ class Change(object):
     MapSet     = "MSET"
     MapDel     = "MDEL"
     Expire     = "EXP"
+    DelProperty = "PDEL"
 
+    _supported = {Set, Increment, Expire, DelProperty}
 
     def __init__(self, property, op, value):
-        if op not in (self.Set, self.Increment, self.Expire):
+        if op not in self._supported:
             raise ValueError("op %s not supported", op)
 
         self.property = property
@@ -293,13 +295,21 @@ class Change(object):
         """
         Create a SET change
         """
-
         return Change(prop, cls.Set, val)
 
     @classmethod
     def expire(cls, seconds):
-
+        """
+        Expire entity(ies) in T seconds
+        """
         return Change("", cls.Expire, nanoseconds(seconds))
+
+    @classmethod
+    def delProperty(cls, prop):
+        """
+        Delete one property from an entity by its name
+        """
+        return Change( prop, cls.DelProperty, "")
 
 
 class UpdateQuery(object):
@@ -335,8 +345,22 @@ class UpdateQuery(object):
         return self
 
     def expire(self, seconds):
-
+        """
+        Expire the selected entities in T seconds
+        :param seconds:
+        :return:
+        """
         self.changes.append(Change.expire(seconds))
+        return self
+
+    def delProperties(self, *properties):
+        """
+        Delete whole properties from the selected entities
+        :param properties: the property names to delete, at least one
+        """
+        for prop in properties:
+            self.changes.append(Change.delProperty(prop))
+
         return self
 
 class UpdateResponse(Response):

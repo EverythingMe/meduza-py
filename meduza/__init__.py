@@ -29,6 +29,7 @@ def ping(client):
         res = client.do(q)
         return res.error is None
 
+
 class Session(object):
 
     def __init__(self, masterConnector = defaultConnector, slaveConnector = defaultConnector):
@@ -189,7 +190,7 @@ class Session(object):
         return res.num
 
 
-    def update(self, model, filters, **changes):
+    def update(self, model, filters, *deletions, **changes):
         """
         Update performs an UPDATE query on the model
         Usage:
@@ -206,7 +207,8 @@ class Session(object):
         except TypeError:
             filters = (filters,)
 
-        changeList = []
+        changeList = list(deletions)
+
         for k,v in changes.iteritems():
             if isinstance(v, Change):
                 if k != "_":
@@ -325,7 +327,7 @@ def delete(model, filters):
     """
     return _defaultSession.delete(model, filters)
 
-def update(model, filters, **changes):
+def update(model, filters, *deletions, **changes):
     """
     Update performs an UPDATE query on the model using the default session
     Usage:
@@ -334,8 +336,8 @@ def update(model, filters, **changes):
     :param filters: a list of selection filters and changes to determine which entities to update
     :param setChanges: a set of key=value changes to set. e.g. name="Foo". For incement changes use filtersAndChanges
     :return: the number of updated entities
-"""
-    return _defaultSession.update(model, filters, **changes)
+    """
+    return _defaultSession.update(model, filters, *deletions, **changes)
 
 def count(model, filters=tuple()):
 

@@ -244,11 +244,14 @@ class MeduzaE2ETestCase(TestCase):
 
         u = self.users[0]
         n = meduza.update(User, User.name.equals(u.name) & User.email.equals(u.email),
+                          Change.delProperty("email"),
                           name="baba", score=User.score + 3)
 
         self.assertEquals(n, 1)
-
         users = meduza.select(User, (User.name == "baba") & (User.email == u.email))
+        self.assertEqual(len(users), 0)
+
+        users = meduza.select(User, (User.name == "baba") & (User.email == ""))
         self.assertEqual(len(users), 1)
         self.assertEqual(users[0].id, u.id)
         self.assertEqual(users[0].score, u.score + 3)
