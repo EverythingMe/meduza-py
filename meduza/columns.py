@@ -12,9 +12,10 @@ from . import queries
 class Column(object):
 
     Undefined = object()
-
+    zero = None
 
     def __init__(self, name='', default = Undefined, required=False, choices = None):
+
 
         self.name = name
         self.primary = False
@@ -23,6 +24,8 @@ class Column(object):
         self.modelName = name
 
         self._choices = set(choices) if choices is not None else None
+
+
 
     def default(self):
 
@@ -120,6 +123,7 @@ class Text(Column):
     Representing a text column
     """
 
+    zero = ""
 
     def __init__(self, name='', maxLen=-1, **kwargs):
 
@@ -160,6 +164,9 @@ class Text(Column):
 
 class Int(Column):
     """ Representing an integer column """
+    zero = 0
+
+
     def decode(self, data):
         return int(data) if data is not None else None
 
@@ -172,6 +179,7 @@ class Uint(Column):
     """
     Representing an unsigned integer column
     """
+    zero = 0
     def decode(self, data):
         long(-data if data < 0 else data) if data is not None else None
 
@@ -180,6 +188,7 @@ class Uint(Column):
 
 class Float(Column):
     """ Representing an integer column """
+    zero = 0.0
     def decode(self, data):
         return float(data) if data is not None else None
 
@@ -225,6 +234,7 @@ class Timestamp(Column):
 
 
 class Bool(Column):
+    zero = False
 
     def decode(self, data):
 

@@ -210,7 +210,7 @@ class RedisClient(object):
     You can use a single redis client per app, as it is thread safe and uses a redis connection pool internally.
     """
 
-    def __init__(self, host='localhost', port=9977, timeout=0.1):
+    def __init__(self, host='localhost', port=9977, timeout=None):
 
         self._transport = RedisTransport(host, port, timeout)
         self._proto = BsonProtocol()

@@ -213,7 +213,7 @@ class MeduzaE2ETestCase(TestCase):
 
     def testDelete(self):
 
-        n = meduza.delete(User, User.id.any(*[u.id for u in self.users]))
+        n = meduza.delete(User, User.all())
         self.assertEquals(n, len(self.users))
         users = meduza.get(User, *[u.id for u in self.users])
 
@@ -236,8 +236,7 @@ class MeduzaE2ETestCase(TestCase):
 
         u = User(name ="baba")
         # Test that missing object attributes that are columns do not return the column class
-        with self.assertRaises(AttributeError):
-            u.fancySuperLongNameWatWat
+        self.assertEqual("", u.fancySuperLongNameWatWat)
 
 
     def testUpdate(self):

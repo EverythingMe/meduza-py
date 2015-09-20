@@ -72,8 +72,9 @@ class Model(object):
     def __getattribute__(self, item):
         ret = object.__getattribute__(self, item)
 
+        #each column has a default zero-value, for most it's None
         if isinstance(ret, Column):
-            raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__.__name__, item))
+            return ret.zero
         return ret
 
     @classmethod
