@@ -43,7 +43,7 @@ class Session(object):
         :param model: a model class to create instances from
         :param filters: a list of filters
         :param kwargs: extra parameters:
-            * properties - a list of properties to get (NOT SUPPORTED SERVER SIDE YET)
+            * properties - a list of properties to get
             * order - an ordering object (order by ? asc/desc)
             * paging - start/offset
             * limit - same as paging but start=0
@@ -88,13 +88,19 @@ class Session(object):
         Get objects by id(s), automatically generating instances of the model class
         :param model: a model class used to generate objects from the returned entities
         :param ids: a set of id strings
+        :param kwargs: extra parameters:
+            * properties - a list of properties to get
         :return: a list of model object instances
+
         """
         for id in ids:
             if not isinstance(id, basestring):
                 raise MeduzaError("Invalid id type: %s", type(id))
 
-        q = queries.GetQuery(model.tableName()).filter(model.__primary__, Condition.IN, *ids).limit(len(ids))
+        q = queries.GetQuery(model.tableName(),
+                    properties=kwargs.get('properties', tuple()))\
+            .filter(model.__primary__, Condition.IN, *ids)\
+            .limit(len(ids))
 
         with self._slave() as client:
             res = client.do(q)
@@ -289,7 +295,7 @@ def get(model, *ids, **kwargs):
 
     :return: a list of model object instances
     """
-    return _defaultSession.get(model, *ids)
+    return _defaultSession.get(model, *ids,**kwargs)
 
 def put(*objects):
     """

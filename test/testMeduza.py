@@ -161,6 +161,39 @@ class MeduzaE2ETestCase(TestCase):
             self.assertTrue(bool(u.fancySuperLongNameWatWat))
             self.assertEqual(u.fancySuperLongNameWatWat, users[i].fancySuperLongNameWatWat)
 
+    def testPartialProperties(self):
+        """
+        test GET with partial properties
+        :return:
+        """
+        users = meduza.get(User, *[u.id for u in self.users], properties=('name',))
+
+        self.assertEqual(len(users), len(self.users))
+
+        for i, u in enumerate(users):
+
+            self.assertEquals(u.id, self.users[i].id)
+            self.assertEquals(u.name, self.users[i].name)
+            self.assertNotEqual(u.email, self.users[i].email)
+
+            self.assertEqual(u.email, "")
+            self.assertEqual(u.groups, None)
+            self.assertEqual(u.fancySuperLongNameWatWat, "")
+
+
+        u = self.users[0]
+        users = meduza.select(User, User.name.equals(u.name) & User.email.equals(u.email), properties=('name',))
+        self.assertEqual(len(users), 1)
+        u2 = users[0]
+
+
+        self.assertEquals(u2.id, u.id)
+        self.assertEquals(u.name, u2.name)
+
+        self.assertEqual(u2.email, "")
+        self.assertEqual(u2.groups, None)
+        self.assertEqual(u2.fancySuperLongNameWatWat, "")
+
 
     def testSelect(self):
 
