@@ -11,8 +11,8 @@ setup(
     description = 'A python library for meduza',
     version=contents('VERSION'),
     author='DoAT Media LTD.',
-    author_email='dvir@everything.me',
-    url='https://gitlab.doit9.com/backend/meduza-py',
+    author_email='dvirsky@gmail.com',
+    url='https://github.com/EverythingMe/meduza-py',
     packages=find_packages(),
     install_requires=['redis>=2.10', 'pymongo>=2.8','hiredis>=0.1.6', 'pyyaml', 'requests'],
 )
