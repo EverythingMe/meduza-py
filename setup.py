@@ -9,7 +9,7 @@ contents = lambda f: open(pwd(f)).read().strip()
 setup(
     name='meduza',
     description = 'A python library for meduza',
-    version='0.1',
+    version='0.2',
     author='DoAT Media LTD.',
     author_email='dvirsky@gmail.com',
     url='https://github.com/EverythingMe/meduza-py',
